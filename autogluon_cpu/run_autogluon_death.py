@@ -26,7 +26,22 @@ from sklearn.model_selection import train_test_split
 DATA_PATH = Path("/Users/ac/comforter/NewComfModelData.csv")
 OUTPUT_DIR = Path("/Users/ac/comforter/artifacts/autogluon_death")
 TARGET = "DeathHospDisch"
-EXCLUDE = ["ID", "Mort30d", "ICUWithin48h", "METWithin48h"]
+EXCLUDE = [
+    "Id",
+    "Cardiovascular",
+    "LungDisease",
+    "CKD",
+    "LiverDisease",
+    "Diabetes",
+    "Malignancy",
+    "CognitionMentalHealth",
+    "FunctionalDependency",
+    "NutritionMetabolism",
+    "SensoryImpairment",
+    "Mort30d",
+    "ICUWithin48h",
+    "METWithin48h",
+]
 SEED = 42
 
 
