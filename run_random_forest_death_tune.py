@@ -31,6 +31,16 @@ DATA_PATH = Path('/Users/ac/comforter/NewComfModelData.csv')
 OUTPUT_DIR = Path('/Users/ac/comforter/artifacts/random_forest_death_tuned')
 TARGET = 'DeathHospDisch'
 EXCLUDE = [
+    'Cardiovascular',
+    'LungDisease',
+    'CKD',
+    'LiverDisease',
+    'Diabetes',
+    'Malignancy',
+    'CognitionMentalHealth',
+    'FunctionalDependency',
+    'NutritionMetabolism',
+    'SensoryImpairment',
     'Mort30d',
     'ICUWithin48h',
     'METWithin48h',
