@@ -7,9 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from group_lasso import GroupLasso
 from sklearn.calibration import calibration_curve
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     accuracy_score,
     average_precision_score,
@@ -24,6 +22,8 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import SplineTransformer, StandardScaler
+
+from group_penalized_logistic import fit_group_lasso_logistic
 
 DATA_PATH = Path('/Users/ac/comforter/NewComfModelData.csv')
 OUTPUT_DIR = Path('/Users/ac/comforter/artifacts/group_lasso_death_tuned')
@@ -52,12 +52,12 @@ RANDOM_STATE = 42
 TEST_SIZE = 0.2
 VAL_SIZE = 0.25
 
-N_ITER = 5000
-TOL = 1e-5
-SCALE_REG = 'none'
+MAX_ITER = 4000
+TOL = 1e-6
+GROUP_WEIGHT_MODE = 'sqrt'
+SELECTION_TOL = 1e-8
 
-GROUP_REG_GRID = [0.005, 0.02, 0.05, 0.10]
-L1_REG_GRID = [0.0, 0.01, 0.02]
+GROUP_REG_GRID = [0.001, 0.003, 0.01, 0.03, 0.10]
 SPLINE_KNOTS_GRID = [3, 4, 5]
 SPLINE_DEGREE_GRID = [2, 3]
 
@@ -315,7 +315,7 @@ def _fit_gl_model(
     train_X: pd.DataFrame,
     train_y: pd.Series,
     params: dict[str, float],
-) -> tuple[GroupLassoDesign, StandardScaler, GroupLasso, LogisticRegression, np.ndarray]:
+) -> tuple[GroupLassoDesign, StandardScaler, object]:
     design = GroupLassoDesign(
         spline_vars=SPLINE_VARS,
         interaction_vars=INTERACTION_VARS,
@@ -328,49 +328,33 @@ def _fit_gl_model(
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train_raw)
 
-    gl = GroupLasso(
-        groups=np.array(design.group_ids),
+    model = fit_group_lasso_logistic(
+        X_train,
+        train_y.to_numpy(dtype=float),
         group_reg=float(params['group_reg']),
-        l1_reg=float(params['l1_reg']),
-        n_iter=N_ITER,
+        group_ids=np.array(design.group_ids),
+        group_weight_mode=GROUP_WEIGHT_MODE,
+        max_iter=MAX_ITER,
         tol=TOL,
-        scale_reg=SCALE_REG,
-        fit_intercept=True,
-        random_state=RANDOM_STATE,
-        supress_warning=True,
     )
-    gl.fit(X_train, train_y.to_numpy())
 
-    keep = gl.sparsity_mask_
-    X_train_sel = gl.transform(X_train)
-    if X_train_sel.shape[1] == 0:
-        X_train_sel = X_train
-        keep = np.ones(X_train.shape[1], dtype=bool)
-
-    lr = LogisticRegression(max_iter=1000, solver='liblinear', random_state=RANDOM_STATE)
-    lr.fit(X_train_sel, train_y.to_numpy())
-
-    return design, scaler, gl, lr, keep
+    return design, scaler, model
 
 
-def _predict_prob(design: GroupLassoDesign, scaler: StandardScaler, gl: GroupLasso, lr: LogisticRegression, X: pd.DataFrame) -> np.ndarray:
+def _predict_prob(design: GroupLassoDesign, scaler: StandardScaler, model: object, X: pd.DataFrame) -> np.ndarray:
     X_raw = design.transform(X)
     X_scaled = scaler.transform(X_raw)
-    X_sel = gl.transform(X_scaled)
-    if X_sel.shape[1] == 0:
-        X_sel = X_scaled
-    return lr.predict_proba(X_sel)[:, 1]
+    return model.predict_proba(X_scaled)
 
 
 def _evaluate_candidate(train_X: pd.DataFrame, train_y: pd.Series, val_X: pd.DataFrame, val_y: pd.Series, params: dict[str, float | int]) -> dict[str, float | int]:
-    design, scaler, gl, lr, keep = _fit_gl_model(train_X, train_y, params)
-    val_prob = _predict_prob(design, scaler, gl, lr, val_X)
+    design, scaler, model = _fit_gl_model(train_X, train_y, params)
+    val_prob = _predict_prob(design, scaler, model, val_X)
     val_pred = (val_prob >= 0.5).astype(int)
     val_y_arr = val_y.to_numpy()
 
     return {
         'group_reg': float(params['group_reg']),
-        'l1_reg': float(params['l1_reg']),
         'spline_knots': int(params['spline_knots']),
         'spline_degree': int(params['spline_degree']),
         'val_roc_auc': float(roc_auc_score(val_y_arr, val_prob)),
@@ -379,9 +363,12 @@ def _evaluate_candidate(train_X: pd.DataFrame, train_y: pd.Series, val_X: pd.Dat
         'val_log_loss': float(log_loss(val_y_arr, val_prob, labels=[0, 1])),
         'val_accuracy': float(accuracy_score(val_y_arr, val_pred)),
         'val_balanced_accuracy': float(balanced_accuracy_score(val_y_arr, val_pred)),
-        'selected_features': int(np.sum(keep)),
-        'selected_feature_proportion': float(np.mean(keep)),
+        'selected_features': int(np.sum(model.active_mask_)),
+        'selected_feature_proportion': float(np.mean(model.active_mask_)),
+        'selected_groups': int(len(model.active_groups_)),
         'design_groups': int(design.group_ids[-1]) if design.group_ids else 0,
+        'converged': bool(model.converged_),
+        'n_iter': int(model.n_iter_),
     }
 
 
@@ -391,11 +378,10 @@ def main() -> None:
     grid = [
         {
             'group_reg': g,
-            'l1_reg': l,
             'spline_knots': k,
             'spline_degree': d,
         }
-        for g, l, k, d in product(GROUP_REG_GRID, L1_REG_GRID, SPLINE_KNOTS_GRID, SPLINE_DEGREE_GRID)
+        for g, k, d in product(GROUP_REG_GRID, SPLINE_KNOTS_GRID, SPLINE_DEGREE_GRID)
     ]
 
     tune_rows: list[dict] = []
@@ -409,15 +395,14 @@ def main() -> None:
     best_row = tune_df.iloc[0]
     best_params = {
         'group_reg': float(best_row['group_reg']),
-        'l1_reg': float(best_row['l1_reg']),
         'spline_knots': int(best_row['spline_knots']),
         'spline_degree': int(best_row['spline_degree']),
     }
 
     # Refit with best params on train+val and evaluate on test.
-    best_design, best_scaler, best_gl, best_lr, best_keep = _fit_gl_model(train_val_X, train_val_y, best_params)
+    best_design, best_scaler, best_model = _fit_gl_model(train_val_X, train_val_y, best_params)
 
-    test_prob = _predict_prob(best_design, best_scaler, best_gl, best_lr, test_X)
+    test_prob = _predict_prob(best_design, best_scaler, best_model, test_X)
     test_pred = (test_prob >= 0.5).astype(int)
     test_true = test_y.to_numpy()
 
@@ -430,8 +415,8 @@ def main() -> None:
 
     test_metrics = _confusion_metrics(test_true, test_pred)
 
-    selected_features = [f for f, k in zip(best_design.feature_names, best_keep) if k]
-    selected_groups = sorted(set(g for g, k in zip(best_design.group_ids, best_keep) if k))
+    selected_features = [f for f, k in zip(best_design.feature_names, best_model.active_mask_) if k]
+    selected_groups = [int(group) for group in best_model.active_groups_]
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     tune_df_path = OUTPUT_DIR / 'tuning_results.csv'
@@ -450,6 +435,7 @@ def main() -> None:
                 'best_val_brier': float(best_row['val_brier']),
                 'best_val_log_loss': float(best_row['val_log_loss']),
                 'grid_size': int(len(tune_df)),
+                'group_weight_mode': GROUP_WEIGHT_MODE,
             },
             indent=2,
         ),
@@ -473,15 +459,19 @@ def main() -> None:
             'interaction_terms': [f'{a}_x_{b}' for a, b in best_design.interactions],
             'hyperparameters': {
                 'group_reg': best_params['group_reg'],
-                'l1_reg': best_params['l1_reg'],
                 'spline_knots': best_params['spline_knots'],
                 'spline_degree': best_params['spline_degree'],
-                'scale_reg': SCALE_REG,
+                'group_weight_mode': GROUP_WEIGHT_MODE,
+                'max_iter': MAX_ITER,
+                'tol': TOL,
+                'selection_tol': SELECTION_TOL,
+                'objective': 'logistic + lambda * sum_g sqrt(|g|) * ||beta_g||_2',
             },
             'selected_feature_count': int(len(selected_features)),
             'selected_group_count': int(len(selected_groups)),
             'selected_features': selected_features,
             'selected_groups': selected_groups,
+            'group_norms': {str(k): float(v) for k, v in best_model.group_norms_.items()},
             'prevalence': {
                 'full': float(full_y.mean()),
                 'train': float(train_y.mean()),
@@ -497,6 +487,10 @@ def main() -> None:
             'val_log_loss': float(best_row['val_log_loss']),
             'val_accuracy': float(best_row['val_accuracy']),
             'val_balanced_accuracy': float(best_row['val_balanced_accuracy']),
+            'selected_features': int(best_row['selected_features']),
+            'selected_groups': int(best_row['selected_groups']),
+            'converged': bool(best_row['converged']),
+            'n_iter': int(best_row['n_iter']),
         },
         'test_metrics_threshold_0_5': {
             'accuracy': float(test_metrics['accuracy']),
@@ -514,6 +508,11 @@ def main() -> None:
         'tuning': {
             'grid_size': int(len(tune_df)),
             'top_5_by_val_roc_auc': tune_df.head(5).to_dict(orient='records'),
+        },
+        'optimization': {
+            'converged': bool(best_model.converged_),
+            'n_iter': int(best_model.n_iter_),
+            'objective': float(best_model.objective_),
         },
     }
 
