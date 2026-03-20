@@ -12,6 +12,12 @@ model families:
 
 Generated reports, prediction files, and figures are written under `artifacts/`.
 
+There is also a facility-holdout internal-external validation workflow for
+`NewModelV3.csv`, where `Facility` is used only to define the leave-one-site-out
+splits and is excluded from the predictor set. The pooled ROC-AUC summaries use
+random-effects meta-analysis with Sidik-Jonkman heterogeneity estimation and
+Hartung-Knapp confidence and prediction intervals.
+
 ## Data and path assumptions
 
 - The dataset is expected at `NewComfModelData.csv` in the repository root.
@@ -88,6 +94,7 @@ The usual death-prediction workflow in this repository is:
 | `run_group_lasso_death_tune.py` | Group lasso hyperparameter sweep and final test evaluation. | `artifacts/group_lasso_death_tuned/tuning_results.csv`, `report.json` |
 | `run_group_ridge_death_tune.py` | Group-penalized ridge sweep and final test evaluation. | `artifacts/group_ridge_death_tuned/tuning_results.csv`, `report.json` |
 | `run_random_forest_death_tune.py` | Random forest sweep and final test evaluation. | `artifacts/random_forest_death_tuned/tuning_results.csv`, `report.json` |
+| `run_internal_external_validation_death.py` | Facility-holdout internal-external validation for TabICL, group lasso, group ridge, and random forest on `NewModelV3.csv`. | `artifacts/internal_external_validation_death/summary_auc.csv`, `report.json` |
 | `plot_death_roc_auc.py` | Bar chart comparing ROC-AUC across final and sweep outputs. | `artifacts/death_roc_auc_comparison.png` |
 | `plot_death_roc_curve_final_models.py` | ROC curves for final selected models. | `artifacts/death_roc_curve_final_models.png` |
 | `plot_death_calibration_curve_final_models.py` | Calibration curves for final selected models. | `artifacts/death_calibration_curve_final_models.png` |
@@ -121,6 +128,22 @@ uv run python plot_death_roc_auc.py
 uv run python plot_death_roc_curve_final_models.py
 uv run python plot_death_calibration_curve_final_models.py
 ```
+
+For facility-holdout internal-external validation on `NewModelV3.csv`:
+
+```bash
+uv run python run_internal_external_validation_death.py
+uv run --project autogluon_cpu python autogluon_cpu/run_autogluon_death_internal_external.py
+```
+
+Main outputs:
+
+- `artifacts/internal_external_validation_death/fold_auc.csv`
+- `artifacts/internal_external_validation_death/summary_auc.csv`
+- `artifacts/internal_external_validation_death/report.json`
+- `artifacts/autogluon_death_internal_external/fold_auc.csv`
+- `artifacts/autogluon_death_internal_external/summary_auc.csv`
+- `artifacts/autogluon_death_internal_external/report.json`
 
 ## AutoGluon subproject
 

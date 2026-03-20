@@ -1,0 +1,51 @@
+Messages: 
+- Even when applied within the same site at a later timepoint, the model demonstrated miscalibration (slope < 1), suggesting temporal instability in predictor effects. This pattern was also observed in one external site, while another external site demonstrated the opposite pattern (slope > 1), indicating heterogeneity in model transportability.
+- The model likely overestimated effect sizes at development (or conditions changed over time)
+- The model demonstrated consistent discrimination across sites (ROC-AUC 0.77–0.84). Calibration-in-the-large showed only modest variation, with the largest deviation observed in Site 4.
+Calibration slopes, however, varied across sites (0.79–1.22). In the temporal validation cohort (Site 2), the slope was <1 (0.82), indicating that predictions were too extreme despite stable baseline risk. A similar pattern was observed in one external site (Site 3; slope 0.79), whereas another external site demonstrated a slope >1 (Site 4; 1.22).
+Brier scores were similar across sites and did not reflect these differences in calibration.
+- In temporal validation within the development site, the model exhibited miscalibration (slope <1) despite stable baseline risk, suggesting attenuation of predictor effects over time. This indicates that the model’s coefficients may be overly strong when applied to later cohorts.
+Across external sites, calibration slopes varied in both directions, with one site demonstrating similar overestimation of predictor effects and another showing the opposite pattern. This heterogeneity suggests that while the model’s discrimination is preserved, the strength of predictor–outcome relationships is not fully transportable across settings.
+Notably, overall performance as measured by the Brier score was similar across sites, indicating that this metric did not capture differences in calibration.
+
+Argument for new model:
+The current REMAIN model appears transportable for ranking risk, but not fully transportable for estimating absolute risk, so model refinement is justified to improve calibration stability across settings and over time.
+
+You have shown that:
+Discrimination is acceptable in both temporal and external validation
+Calibration-in-the-large is not the main problem
+Calibration slope varies across cohorts, including in temporal validation at the development site
+That pattern suggests the model has captured a real signal, but the strength of predictor effects is not stable.
+The model works, but its coefficients do not generalise consistently enough for reliable probability estimation across settings.
+
+**Why not just recalibrate**
+Because your main issue is not just intercept shift.
+Temporal validation cohort: slope < 1
+One external cohort: slope < 1
+Another external cohort: slope > 1
+So the problem is not a single universal baseline offset. It is that the model’s prediction scale behaves differently across datasets.
+
+The existing model showed preserved discrimination across temporal and external cohorts, indicating that the predictor set contains useful prognostic information.
+However, heterogeneity in calibration slopes indicated instability in predictor effects across settings and time, suggesting that the current coefficient structure is not fully transportable.
+Therefore, it is reasonable to refine the model using a combined multicentre dataset to better represent variation in predictor–outcome relationships.
+The refined model should then be assessed using internal-external cross-validation to evaluate whether transportability has improved.
+
+
+What refinement is trying to achieve
+Not necessarily a much higher AUC.
+More realistically, you are aiming for:
+similar or slightly better discrimination
+more stable calibration slope
+less need for local updating
+better probability estimates across centres
+That is an important aim, especially if the model is meant for clinical risk estimation rather than just ranking.
+
+
+
+- Further evaluated the potential for state of the art transformer-based tabular foundation model and ensemble learning to improve performance of in-hospital mortality prediction.
+- Definitely need to comment on which site was the initial model 'development' site, and which were the 'external validation' sites.
+
+- Brier scores were relatively similar across sites, reflecting comparable overall prediction error. However, this metric did not capture differences in calibration, with substantial heterogeneity observed in calibration slopes.
+
+
+While discrimination was consistently preserved, calibration slope estimates varied across sites and across modelling approaches. Although confidence intervals were wide, similar patterns were observed across analyses, suggesting that instability in calibration may reflect underlying differences between cohorts rather than sampling variability alone.

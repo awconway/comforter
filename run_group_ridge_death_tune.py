@@ -46,7 +46,7 @@ EXCLUDE = [
 MANDATORY_EXCLUDES = ['Id']
 
 SPLINE_VARS = ['Age', 'NAS', 'NEWS', 'ICD', 'SOFA']
-INTERACTION_VARS = ['NAS', 'NEWS', 'ICD', 'SOFA']
+INTERACTION_VARS = ['Age', 'NAS', 'NEWS', 'ICD', 'SOFA']
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 VAL_SIZE = 0.25
@@ -140,11 +140,18 @@ class GroupLassoDesign:
         self.interactions: list[tuple[str, str]] = []
         self.spline_transformers: dict[str, SplineTransformer] = {}
         self.num_medians: dict[str, float] = {}
+        self.numeric_means: dict[str, float] = {}
         self.cat_fill: dict[str, str] = {}
         self.cat_dummy_cols: list[str] = []
         self.feature_names: list[str] = []
         self.group_ids: list[int] = []
         self.fitted = False
+
+    def _center_numeric(self, df: pd.DataFrame) -> pd.DataFrame:
+        if 'Age' in df.columns and 'Age' in self.numeric_means:
+            df = df.copy()
+            df['Age'] = df['Age'] - self.numeric_means['Age']
+        return df
 
     def fit(self, df: pd.DataFrame) -> 'GroupLassoDesign':
         df_local = df.copy()
@@ -152,6 +159,9 @@ class GroupLassoDesign:
         self.cat_cols = [c for c in df_local.columns if c not in self.numeric_cols]
 
         self.num_medians = df_local[self.numeric_cols].median().to_dict()
+        num_imputed = df_local[self.numeric_cols].fillna(self.num_medians)
+        self.numeric_means = num_imputed.mean().to_dict()
+        df_local[self.numeric_cols] = self._center_numeric(num_imputed)
         self.cat_fill = {}
         for col in self.cat_cols:
             mode = df_local[col].mode(dropna=True)
@@ -174,7 +184,7 @@ class GroupLassoDesign:
                 n_knots=self.spline_knots,
                 include_bias=False,
             )
-            col_train = df_local[[col]].fillna(self.num_medians[col]).to_numpy()
+            col_train = df_local[[col]].to_numpy()
             st.fit(col_train)
             self.spline_transformers[col] = st
 
@@ -231,7 +241,7 @@ class GroupLassoDesign:
 
         num = df[self.numeric_cols].copy()
         cat = df[self.cat_cols].copy() if self.cat_cols else pd.DataFrame(index=df.index)
-        num = num.fillna(self.num_medians)
+        num = self._center_numeric(num.fillna(self.num_medians))
 
         blocks: list[np.ndarray] = []
 

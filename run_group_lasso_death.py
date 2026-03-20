@@ -46,7 +46,7 @@ EXCLUDE = [
 MANDATORY_EXCLUDES = ['Id']
 
 SPLINE_VARS = ['Age', 'NAS', 'NEWS', 'ICD', 'SOFA']
-INTERACTION_VARS = ['NAS', 'NEWS', 'ICD', 'SOFA']
+INTERACTION_VARS = ['Age', 'NAS', 'NEWS', 'ICD', 'SOFA']
 SPLINE_KNOTS = 4
 SPLINE_DEGREE = 3
 GROUP_REG = 0.05
@@ -117,11 +117,18 @@ class GroupLassoDesign:
         self.interactions: list[tuple[str, str]] = []
         self.spline_transformers: dict[str, SplineTransformer] = {}
         self.num_medians: dict[str, float] = {}
+        self.numeric_means: dict[str, float] = {}
         self.cat_fill: dict[str, str] = {}
         self.cat_dummy_cols: list[str] = []
         self.feature_names: list[str] = []
         self.group_ids: list[int] = []
         self.fitted = False
+
+    def _center_numeric(self, df: pd.DataFrame) -> pd.DataFrame:
+        if 'Age' in df.columns and 'Age' in self.numeric_means:
+            df = df.copy()
+            df['Age'] = df['Age'] - self.numeric_means['Age']
+        return df
 
     def fit(self, df: pd.DataFrame) -> 'GroupLassoDesign':
         df_local = df.copy()
@@ -130,6 +137,9 @@ class GroupLassoDesign:
 
         # imputation
         self.num_medians = df_local[self.numeric_cols].median().to_dict()
+        num_imputed = df_local[self.numeric_cols].fillna(self.num_medians)
+        self.numeric_means = num_imputed.mean().to_dict()
+        df_local[self.numeric_cols] = self._center_numeric(num_imputed)
         for col in self.cat_cols:
             mode = df_local[col].mode(dropna=True)
             self.cat_fill[col] = mode.iloc[0] if len(mode) else 'missing'
@@ -150,7 +160,7 @@ class GroupLassoDesign:
         self.spline_transformers = {}
         for col in self.spline_vars_fit:
             st = SplineTransformer(degree=SPLINE_DEGREE, n_knots=SPLINE_KNOTS, include_bias=False)
-            col_train = df_local[[col]].fillna(self.num_medians[col]).to_numpy()
+            col_train = df_local[[col]].to_numpy()
             st.fit(col_train)
             self.spline_transformers[col] = st
 
@@ -210,7 +220,7 @@ class GroupLassoDesign:
 
         num = df[self.numeric_cols].copy()
         cat = df[self.cat_cols].copy() if self.cat_cols else pd.DataFrame(index=df.index)
-        num = num.fillna(self.num_medians)
+        num = self._center_numeric(num.fillna(self.num_medians))
         cat = cat.fillna(self.cat_fill)
 
         blocks: list[np.ndarray] = []

@@ -38,6 +38,7 @@ artifacts/
 
 # Local datasets (keep code/reports and lockfile tracked separately)
 NewComfModelData.csv
-
+NewModelV3.csv
+ComforterDatasetVal.csv
 # Local runtime logs
 *.log

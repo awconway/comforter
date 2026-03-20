@@ -1,0 +1,20 @@
+﻿variable,coefficient,group
+Intercept,-2.98336,
+MCAge,0.0220129,
+MCAgeSqd,-0.0005877,
+Female,Referent,Sex
+Male ,0.2823765,Sex
+Nil,Referent,Comorbidity
+Single,0.2314865,Comorbidity
+Multiple,0.4386133,Comorbidity
+Resuscitate,Referent,ARP
+DNAR,1.186407,ARP
+LA-LD,Referent,RemainProfile
+LA-HD,0.2440247,RemainProfile
+MA-MD,0.8467567,RemainProfile
+MA-HD,1.362899,RemainProfile
+HA-HD,2.328536,RemainProfile
+No,Referent,HospAdmitPrev24h
+Yes,-0.6079433,HospAdmitPrev24h
+No,Referent,SurgPrev24h
+Yes,-1.026542,SurgPrev24h
