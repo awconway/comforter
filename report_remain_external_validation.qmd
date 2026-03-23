@@ -1,0 +1,397 @@
+---
+title: "COMFORTER study analysis"
+format:
+  html:
+    embed-resources: true
+date: last-modified
+---
+
+```{python}
+#| echo: false
+#| warning: false
+#| message: false
+
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from IPython.display import Markdown, display
+from sklearn.calibration import calibration_curve
+from sklearn.metrics import (
+    average_precision_score,
+    brier_score_loss,
+    precision_recall_curve,
+    roc_auc_score,
+    roc_curve,
+)
+
+ROOT = Path("/Users/ac/comforter")
+PUB_ROOT = ROOT / "artifacts" / "internal_external_validation_death_publication"
+REMAIN_DIR = PUB_ROOT / "publication_ready_remain_logistic"
+MODELS_DIR = PUB_ROOT / "publication_ready"
+
+SITE_LABEL = {
+    "Site_1": "Site 1",
+    "Site_2": "Site 2",
+    "Site_3": "Site 3",
+    "Site_4": "Site 4",
+}
+SITE_ORDER = {"Site_1": 1, "Site_2": 2, "Site_3": 3, "Site_4": 4}
+SITE_KEYS = ["Site_1", "Site_2", "Site_3", "Site_4"]
+SITE_COLORS = {
+    "Site_1": "#4E79A7",
+    "Site_2": "#F28E2B",
+    "Site_3": "#59A14F",
+    "Site_4": "#E15759",
+}
+MODEL_ORDER = {
+    "TabICL": 1,
+    "Group lasso": 2,
+    "Group ridge": 3,
+    "AutoGluon": 4,
+    "Random forest": 5,
+}
+
+
+def fmt(x: float, n: int = 3) -> str:
+    return f"{float(x):.{n}f}"
+
+
+def fmt_ci(est: float, lo: float, hi: float, n: int = 3) -> str:
+    return f"{fmt(est, n)} ({fmt(lo, n)} to {fmt(hi, n)})"
+
+
+def fmt_range(lo: float, hi: float, n: int = 3) -> str:
+    return f"{fmt(lo, n)} to {fmt(hi, n)}"
+
+
+def _plot_roc_by_site(predictions: pd.DataFrame, title: str) -> None:
+    fig, ax = plt.subplots(figsize=(7.2, 6.2))
+    ax.plot([0, 1], [0, 1], linestyle="--", color="#9CA3AF", linewidth=1.3, label="No-discrimination")
+    for site in SITE_KEYS:
+        site_df = predictions.loc[predictions["test_site"] == site]
+        if site_df.empty:
+            continue
+        y_true = site_df["y_true"].to_numpy(dtype=int)
+        y_prob = site_df["proba_death"].to_numpy(dtype=float)
+        fpr, tpr, _ = roc_curve(y_true, y_prob)
+        auc = roc_auc_score(y_true, y_prob)
+        ax.plot(
+            fpr,
+            tpr,
+            color=SITE_COLORS[site],
+            linewidth=2.4,
+            label=f"{SITE_LABEL.get(site, site)} (AUC {auc:.3f})",
+        )
+    ax.set(xlim=(0.0, 1.0), ylim=(0.0, 1.0), xlabel="False positive rate", ylabel="True positive rate", title=title)
+    ax.legend(loc="lower right", frameon=True, framealpha=0.92, fontsize=9.0)
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
+def _plot_pr_by_site(predictions: pd.DataFrame, title: str) -> None:
+    fig, ax = plt.subplots(figsize=(7.2, 6.2))
+    prevalence = float(predictions["y_true"].mean())
+    ax.plot(
+        [0, 1],
+        [prevalence, prevalence],
+        linestyle="--",
+        color="#9CA3AF",
+        linewidth=1.3,
+        label=f"Prevalence = {prevalence:.3f}",
+    )
+    for site in SITE_KEYS:
+        site_df = predictions.loc[predictions["test_site"] == site]
+        if site_df.empty:
+            continue
+        y_true = site_df["y_true"].to_numpy(dtype=int)
+        y_prob = site_df["proba_death"].to_numpy(dtype=float)
+        precision, recall, _ = precision_recall_curve(y_true, y_prob)
+        ap = average_precision_score(y_true, y_prob)
+        ax.plot(
+            recall,
+            precision,
+            color=SITE_COLORS[site],
+            linewidth=2.4,
+            label=f"{SITE_LABEL.get(site, site)} (AP {ap:.3f})",
+        )
+    ax.set(xlim=(0.0, 1.0), ylim=(0.0, 1.0), xlabel="Recall", ylabel="Precision", title=title)
+    ax.legend(loc="upper right", frameon=True, framealpha=0.92, fontsize=9.0)
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
+def _plot_calibration_by_site(predictions: pd.DataFrame, title: str) -> None:
+    fig, ax = plt.subplots(figsize=(7.2, 6.4))
+    ax.plot([0, 1], [0, 1], linestyle="--", color="#9CA3AF", linewidth=1.2, label="Perfect calibration")
+    for site in SITE_KEYS:
+        site_df = predictions.loc[predictions["test_site"] == site]
+        if site_df.empty:
+            continue
+        y_true = site_df["y_true"].to_numpy(dtype=int)
+        y_prob = site_df["proba_death"].to_numpy(dtype=float)
+        frac_pos, mean_pred = calibration_curve(y_true, y_prob, n_bins=8, strategy="quantile")
+        brier = brier_score_loss(y_true, y_prob)
+        ax.plot(
+            mean_pred,
+            frac_pos,
+            color=SITE_COLORS[site],
+            linewidth=2.3,
+            marker="o",
+            markersize=5,
+            alpha=0.92,
+            label=f"{SITE_LABEL.get(site, site)} (Brier {brier:.3f})",
+        )
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_xlabel("Mean predicted probability")
+    ax.set_ylabel("Observed frequency")
+    ax.set_title(title)
+    ax.legend(loc="lower right", frameon=True, framealpha=0.92, fontsize=9.0)
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
+def _model_predictions(model_key: str) -> pd.DataFrame:
+    df = pd.read_csv(MODELS_DIR / "combined_all_predictions.csv")
+    out = df.loc[df["model"] == model_key].copy()
+    if out.empty:
+        raise ValueError(f"No rows found for model={model_key!r} in combined_all_predictions.csv")
+    return out
+```
+
+
+## REMAIN external and temporal validation summary
+
+- **Outcome:** In-hospital mortality (DeathHospDisch)  
+- **Model:** Logistic regression using the REMAIN coefficients
+- **External validation sites:** Site 1, Site 3, Site 4  
+- **Temporal validation site:** Site 2  
+- **Primary metrics:** ROC-AUC, PR-AUC (average precision), Brier score, calibration slope/intercept.  
+
+### Interpretation
+
+- **Discrimination was moderate but varied across sites**, indicating that the predictor set retains useful ranking ability outside the development setting.  
+
+- **Calibration slope suggested potential instability in transportability.**  
+  - Temporal validation showed a slope <1 (0.825), indicating that predictions were too extreme, consistent with either overfitting or temporal changes in predictor–outcome relationships.  
+  - External validation cohorts showed variable slope estimates, with one cohort demonstrating similar risk of overfitting to the development site (0.789) and another site at which estimated risks were too moderate.
+  - Overall interpretation indicates that development model may have been overfitted to the development data, leading to overconfident predictions that did not generalize well. 
+
+- **Uncertainty in calibration estimates:** Indicators of poor calibration were observed across temporal and external validation, suggesting that these findings may not be solely due to sampling variability.  
+
+- **Brier score interpretation:** Brier scores were similar across cohorts and did not fully reflect differences in calibration, indicating that overall prediction error may remain comparable even when probability calibration differs.   
+
+- **Rationale for a new model vs. only recalibration:** Variation in slope direction across cohorts (both <1 and >1) suggests that a single global recalibration is unlikely to fully address calibration differences.  
+
+### Site-Level Validation Metrics
+
+```{python}
+#| echo: false
+
+site_df = pd.read_csv(REMAIN_DIR / "table_2_site_level_metrics_with_ci.csv")
+site_df = site_df.copy()
+site_df["Validation type"] = site_df["validation_type"]
+site_df["Site"] = site_df["site"].map(SITE_LABEL).fillna(site_df["site"])
+site_df["val_rank"] = site_df["validation_type"].map({"External validation": 0, "Temporal validation": 1})
+site_df["site_rank"] = site_df["site"].map(SITE_ORDER)
+site_df = site_df.sort_values(["val_rank", "site_rank"]).reset_index(drop=True)
+
+site_display = pd.DataFrame(
+    {
+        "Validation type": site_df["Validation type"],
+        "Site": site_df["Site"],
+        "N": site_df["n"].astype(int),
+        "Deaths": site_df["events"].astype(int),
+        "CITL (intercept)": site_df["citl"].map(lambda v: fmt(v, 3)),
+        "Calibration slope": site_df["slope"].map(lambda v: fmt(v, 3)),
+        "ROC-AUC [95% CI]": site_df.apply(
+            lambda r: fmt_ci(r["roc_auc"], r["roc_auc_ci_lower"], r["roc_auc_ci_upper"], 3), axis=1
+        ),
+        "PR-AUC [95% CI]": site_df.apply(
+            lambda r: fmt_ci(r["pr_auc"], r["pr_auc_ci_lower"], r["pr_auc_ci_upper"], 3), axis=1
+        ),
+        "Brier [95% CI]": site_df.apply(
+            lambda r: fmt_ci(r["brier"], r["brier_ci_lower"], r["brier_ci_upper"], 3), axis=1
+        ),
+    }
+)
+display(site_display)
+display(Markdown("**Site-level 95% confidence intervals were estimated from 500 nonparametric bootstrap replicates.**"))
+```
+
+
+### Random-Effects Meta-Analysis (Pooled External Validation)
+
+```{python}
+#| echo: false
+
+meta_df = pd.read_csv(REMAIN_DIR / "table_1_internal_external_summary.csv")
+meta_display = pd.DataFrame(
+    {
+        "Metric": meta_df["Metric"],
+        "Pooled estimate (95% CI)": meta_df.apply(
+            lambda r: fmt_ci(r["Estimate"], r["CI lower"], r["CI upper"], 3), axis=1
+        ),
+        "95% PI": meta_df.apply(lambda r: fmt_range(r["PI lower"], r["PI upper"], 3), axis=1),
+        "Tau²": meta_df["Tau²"].map(lambda v: fmt(v, 3)),
+        "I² (%)": meta_df["I2 (%)"].map(lambda v: fmt(v, 1)),
+    }
+)
+display(meta_display)
+
+remain_all = pd.read_csv(REMAIN_DIR / "combined_all_predictions.csv")
+display(
+    Markdown(
+        f"**Overall sample:** N = {len(remain_all)}, deaths = {int(remain_all['y_true'].sum())}, "
+        f"prevalence = {fmt(remain_all['y_true'].mean(), 3)}."
+    )
+)
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Receiver operating characteristics curves for in-hospital mortality using the REMAIN model"
+
+remain_pred = pd.read_csv(REMAIN_DIR / "combined_all_predictions.csv")
+_plot_roc_by_site(remain_pred, "Receiver operating characteristics curves for in-hospital mortality using the REMAIN model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Precision-recall curves for in-hospital mortality using the REMAIN model"
+
+remain_pred = pd.read_csv(REMAIN_DIR / "combined_all_predictions.csv")
+_plot_pr_by_site(remain_pred, "Precision-recall curves for in-hospital mortality using the REMAIN model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Calibration plots for in-hospital mortality using the REMAIN model"
+
+remain_pred = pd.read_csv(REMAIN_DIR / "combined_all_predictions.csv")
+_plot_calibration_by_site(remain_pred, "Calibration plots for in-hospital mortality using the REMAIN model")
+```
+
+## Evaluating new models with internal-external validation
+
+- The above results suggest that the REMAIN logistic regression model demonstrates reasonable discrimination but variable calibration across external and temporal validation cohorts.
+- Investigated the performance of models and techniques that could reduce the risk of poor calibration when using a model at a new site. These included approaches to reduce risk of overfitting by using penalized regression techniques.
+- Used  internal-external validation approach so that the model could be trained on data from multiple sites to reduce risk of overfitting to any single site.
+- Also used a simplified measurement of care dependency and a set of predictors that are simpler to assess by a MET team at the time of decision-making and that we considered would be less susceptible to between-site measurement variability.
+
+
+### Site-Level Holdout Results
+
+```{python}
+#| echo: false
+
+site_holdout = pd.read_csv(MODELS_DIR / "table_s1_site_level_metrics.csv")
+site_holdout = site_holdout.copy()
+site_holdout["site_rank"] = site_holdout["Site"].str.replace("Site ", "Site_", regex=False).map(SITE_ORDER)
+site_holdout["model_rank"] = site_holdout["Model"].map(MODEL_ORDER)
+site_holdout = site_holdout.sort_values(["site_rank", "model_rank"]).reset_index(drop=True)
+
+for col in ["Prevalence", "ROC-AUC", "PR-AUC", "Brier", "CITL", "Slope"]:
+    site_holdout[col] = site_holdout[col].map(lambda v: fmt(v, 4))
+
+site_holdout["n"] = site_holdout["n"].astype(int)
+site_holdout["Events"] = site_holdout["Events"].astype(int)
+display(site_holdout[["Site", "Model", "n", "Events", "Prevalence", "ROC-AUC", "PR-AUC", "Brier", "CITL", "Slope"]])
+```
+
+### Random-Effects Meta-Analysis (Pooled Across Sites)
+
+```{python}
+#| echo: false
+
+model_meta = pd.read_csv(MODELS_DIR / "combined_summary_auc.csv")
+model_label = {
+    "tabicl": "TabICL",
+    "group_lasso": "Group lasso",
+    "group_ridge": "Group ridge",
+    "autogluon": "AutoGluon",
+    "random_forest": "Random forest",
+}
+model_meta["Model"] = model_meta["model"].map(model_label).fillna(model_meta["model"])
+model_meta = model_meta.sort_values("pooled_auc", ascending=False).reset_index(drop=True)
+
+model_meta_display = pd.DataFrame(
+    {
+        "Model": model_meta["Model"],
+        "Pooled ROC-AUC": model_meta["pooled_auc"].map(lambda v: fmt(v, 4)),
+        "95% CI": model_meta.apply(lambda r: fmt_range(r["ci_95_lower"], r["ci_95_upper"], 4), axis=1),
+        "95% PI": model_meta.apply(lambda r: fmt_range(r["pi_95_lower"], r["pi_95_upper"], 4), axis=1),
+        "Tau² (logit AUC)": model_meta["tau2_logit_auc"].map(lambda v: fmt(v, 4)),
+        "I² (%)": model_meta["i2_percent"].map(lambda v: fmt(v, 2)),
+    }
+)
+display(model_meta_display)
+```
+
+<small>Note: Prediction intervals in this internal-external validation context should not be directly compared to the pooled results for REMAIN external validation, as predictions for each hold-out site are from different models trained on data from each other site.</small>
+
+### Interpretation
+
+- TabICL resulted in the numerically highest pooled ROC-AUC, with a point estimate of 0.8382 and a 95% confidence interval of 0.7631 to 0.8928. Additionally, the 95% prediction interval for TabICL were the most narrow across the models that were evaluated due to considerably less heterogeneity across sites. Inspection of measures to assess calibration also indicated that TabICL had the most consistent calibration across sites, with CITL values closest to 0 and slope values closest to 1 across sites. **However, the calibration estimates for the group ridge that I calculated are different to what is reported in the draft manuscript**.
+
+- Developing a new model to predict in-hospital mortality after MET review using an internal-external validation approach, which allowed for training on data from multiple sites, did not substantially improve calibration compared to the REMAIN logistic regression model.
+
+- On balance, given similar estimates of calibration, the TabICL model may be preferred given its slightly higher and more consistent performance in discrimination across sites.
+
+
+
+### TabICL Holdout-Site Plots (Internal-External)
+
+```{python}
+#| echo: false
+#| fig-cap: "Receiver operating characteristics curves for in-hospital mortality using the TabICL model"
+
+tabicl_pred = _model_predictions("tabicl")
+_plot_roc_by_site(tabicl_pred, "Receiver operating characteristics curves for in-hospital mortality using the TabICL model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Precision-recall curves for in-hospital mortality using the TabICL model"
+
+tabicl_pred = _model_predictions("tabicl")
+_plot_pr_by_site(tabicl_pred, "Precision-recall curves for in-hospital mortality using the TabICL model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Calibration plots for in-hospital mortality using the TabICL model"
+
+tabicl_pred = _model_predictions("tabicl")
+_plot_calibration_by_site(tabicl_pred, "Calibration plots for in-hospital mortality using the TabICL model")
+```
+
+### Group Ridge Holdout-Site Plots (Internal-External)
+
+```{python}
+#| echo: false
+#| fig-cap: "Receiver operating characteristics curves for in-hospital mortality using the Group ridge model"
+
+group_ridge_pred = _model_predictions("group_ridge")
+_plot_roc_by_site(group_ridge_pred, "Receiver operating characteristics curves for in-hospital mortality using the Group ridge model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Precision-recall curves for in-hospital mortality using the Group ridge model"
+
+group_ridge_pred = _model_predictions("group_ridge")
+_plot_pr_by_site(group_ridge_pred, "Precision-recall curves for in-hospital mortality using the Group ridge model")
+```
+
+```{python}
+#| echo: false
+#| fig-cap: "Calibration plots for in-hospital mortality using the Group ridge model"
+group_ridge_pred = _model_predictions("group_ridge")
+_plot_calibration_by_site(group_ridge_pred, "Calibration plots for in-hospital mortality using the Group ridge model")
+```
+

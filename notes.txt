@@ -49,3 +49,7 @@ That is an important aim, especially if the model is meant for clinical risk est
 
 
 While discrimination was consistently preserved, calibration slope estimates varied across sites and across modelling approaches. Although confidence intervals were wide, similar patterns were observed across analyses, suggesting that instability in calibration may reflect underlying differences between cohorts rather than sampling variability alone.
+
+
+- ranking to inform decision-making rather than prioritization
+- maybe try out ML on the more 'raw' data that makes up the mICD, NEWS (triggers), and SOFA.
