@@ -5,7 +5,10 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+import numpy as np
 import pandas as pd
+from sklearn.metrics import brier_score_loss, roc_auc_score
+from sklearn.model_selection import StratifiedKFold
 from tabicl import TabICLClassifier
 
 import run_group_lasso_death_tune as group_lasso
@@ -56,6 +59,7 @@ TABICL_DEFAULT = {
 
 TABICL_FEATURE_SETS = ["raw_core", "raw_plus_instability_summary"]
 TABICL_INSTABILITY_REQUIREMENTS = {"AdmitPrev24h", "SurgPrev24h", "ICUDischPrev24h", "METWithinPrev24h"}
+INNER_CV_SPLITS = 5
 
 
 def _load_json(path: Path) -> dict[str, Any] | None:
@@ -209,6 +213,122 @@ def _predict_random_forest(train_X: pd.DataFrame, train_y: pd.Series, test_X: pd
     return pd.Series(prob, index=test_X.index, dtype=float)
 
 
+def _effective_cv_splits(y: pd.Series, requested_splits: int) -> int:
+    counts = y.value_counts()
+    if counts.empty:
+        return 0
+    min_class_n = int(counts.min())
+    return int(max(0, min(requested_splits, min_class_n)))
+
+
+def _select_lasso_lambda_inner_cv(
+    train_X: pd.DataFrame,
+    train_y: pd.Series,
+    base_config: dict[str, Any],
+    seed: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    candidates = sorted({float(v) for v in list(group_lasso.GROUP_REG_GRID) + [float(base_config["group_reg"])]})
+    n_splits = _effective_cv_splits(train_y, INNER_CV_SPLITS)
+    if n_splits < 2:
+        return dict(base_config), {
+            "status": "skipped",
+            "reason": "insufficient_class_counts_for_cv",
+            "selected_group_reg": float(base_config["group_reg"]),
+            "n_splits": int(n_splits),
+        }
+
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    y_arr = train_y.to_numpy(dtype=int)
+    rows: list[dict[str, float | int]] = []
+    for reg in candidates:
+        auc_scores: list[float] = []
+        brier_scores: list[float] = []
+        for fit_idx, val_idx in skf.split(train_X, y_arr):
+            fold_train_X = train_X.iloc[fit_idx]
+            fold_train_y = train_y.iloc[fit_idx]
+            fold_val_X = train_X.iloc[val_idx]
+            fold_val_y = train_y.iloc[val_idx]
+            cfg = dict(base_config)
+            cfg["group_reg"] = float(reg)
+            design, scaler, model = group_lasso._fit_gl_model(fold_train_X, fold_train_y, cfg)
+            prob = group_lasso._predict_prob(design, scaler, model, fold_val_X)
+            y_true = fold_val_y.to_numpy(dtype=int)
+            auc_scores.append(float(roc_auc_score(y_true, prob)))
+            brier_scores.append(float(brier_score_loss(y_true, prob)))
+        rows.append(
+            {
+                "group_reg": float(reg),
+                "cv_mean_auc": float(np.mean(auc_scores)),
+                "cv_mean_brier": float(np.mean(brier_scores)),
+                "cv_folds": int(n_splits),
+            }
+        )
+    cv_df = pd.DataFrame(rows).sort_values(["cv_mean_auc", "cv_mean_brier"], ascending=[False, True]).reset_index(drop=True)
+    best = cv_df.iloc[0]
+    out = dict(base_config)
+    out["group_reg"] = float(best["group_reg"])
+    return out, {
+        "status": "selected",
+        "selected_group_reg": float(best["group_reg"]),
+        "n_splits": int(n_splits),
+        "candidate_results": cv_df.to_dict(orient="records"),
+    }
+
+
+def _select_ridge_lambda_inner_cv(
+    train_X: pd.DataFrame,
+    train_y: pd.Series,
+    base_config: dict[str, Any],
+    seed: int,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    candidates = sorted({float(v) for v in list(group_ridge.RIDGE_REG_GRID) + [float(base_config["ridge_reg"])]})
+    n_splits = _effective_cv_splits(train_y, INNER_CV_SPLITS)
+    if n_splits < 2:
+        return dict(base_config), {
+            "status": "skipped",
+            "reason": "insufficient_class_counts_for_cv",
+            "selected_ridge_reg": float(base_config["ridge_reg"]),
+            "n_splits": int(n_splits),
+        }
+
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    y_arr = train_y.to_numpy(dtype=int)
+    rows: list[dict[str, float | int]] = []
+    for reg in candidates:
+        auc_scores: list[float] = []
+        brier_scores: list[float] = []
+        for fit_idx, val_idx in skf.split(train_X, y_arr):
+            fold_train_X = train_X.iloc[fit_idx]
+            fold_train_y = train_y.iloc[fit_idx]
+            fold_val_X = train_X.iloc[val_idx]
+            fold_val_y = train_y.iloc[val_idx]
+            cfg = dict(base_config)
+            cfg["ridge_reg"] = float(reg)
+            design, scaler, model = group_ridge._fit_model(fold_train_X, fold_train_y, cfg)
+            prob = group_ridge._predict_prob(design, scaler, model, fold_val_X)
+            y_true = fold_val_y.to_numpy(dtype=int)
+            auc_scores.append(float(roc_auc_score(y_true, prob)))
+            brier_scores.append(float(brier_score_loss(y_true, prob)))
+        rows.append(
+            {
+                "ridge_reg": float(reg),
+                "cv_mean_auc": float(np.mean(auc_scores)),
+                "cv_mean_brier": float(np.mean(brier_scores)),
+                "cv_folds": int(n_splits),
+            }
+        )
+    cv_df = pd.DataFrame(rows).sort_values(["cv_mean_auc", "cv_mean_brier"], ascending=[False, True]).reset_index(drop=True)
+    best = cv_df.iloc[0]
+    out = dict(base_config)
+    out["ridge_reg"] = float(best["ridge_reg"])
+    return out, {
+        "status": "selected",
+        "selected_ridge_reg": float(best["ridge_reg"]),
+        "n_splits": int(n_splits),
+        "candidate_results": cv_df.to_dict(orient="records"),
+    }
+
+
 def _predict_tabicl(
     train_X: pd.DataFrame,
     train_y: pd.Series,
@@ -352,8 +472,27 @@ def main() -> None:
         predict_fn: Callable[[pd.DataFrame, pd.Series, pd.DataFrame, dict[str, Any]], pd.Series] = model_spec["predict_fn"]
         model_fold_rows: list[dict[str, Any]] = []
 
-        for split in site_splits:
-            y_prob = predict_fn(split["train_X"], split["train_y"], split["test_X"], model_spec["config"])
+        model_tuning_rows: list[dict[str, Any]] = []
+        for split_idx, split in enumerate(site_splits):
+            run_config = dict(model_spec["config"])
+            tuning_info: dict[str, Any] | None = None
+            inner_seed = int(args.seed + 1000 + split_idx)
+            if model_name == "group_lasso":
+                run_config, tuning_info = _select_lasso_lambda_inner_cv(
+                    split["train_X"],
+                    split["train_y"],
+                    run_config,
+                    seed=inner_seed,
+                )
+            elif model_name == "group_ridge":
+                run_config, tuning_info = _select_ridge_lambda_inner_cv(
+                    split["train_X"],
+                    split["train_y"],
+                    run_config,
+                    seed=inner_seed,
+                )
+
+            y_prob = predict_fn(split["train_X"], split["train_y"], split["test_X"], run_config)
             auc_stats = auc_with_hanley_mcneil_variance(split["test_y"].to_numpy(), y_prob.to_numpy())
 
             fold_row = {
@@ -368,8 +507,21 @@ def main() -> None:
                 "n_neg": int(auc_stats["n_neg"]),
                 "prevalence": float(split["test_y"].mean()),
             }
+            if model_name == "group_lasso":
+                fold_row["selected_group_reg"] = float(run_config["group_reg"])
+            if model_name == "group_ridge":
+                fold_row["selected_ridge_reg"] = float(run_config["ridge_reg"])
             fold_rows.append(fold_row)
             model_fold_rows.append(fold_row)
+            if tuning_info is not None:
+                model_tuning_rows.append(
+                    {
+                        "test_site": split["test_site"],
+                        "train_sites": "|".join(split["train_sites"]),
+                        "selected_config": run_config,
+                        "inner_cv": tuning_info,
+                    }
+                )
 
             prediction_rows.extend(
                 {
@@ -399,6 +551,8 @@ def main() -> None:
             "fold_auc": model_fold_df.to_dict(orient="records"),
             "pooled_auc_random_effects": pooled,
         }
+        if model_tuning_rows:
+            report_models[model_name]["fold_specific_inner_cv_tuning"] = model_tuning_rows
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
 

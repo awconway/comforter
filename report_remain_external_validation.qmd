@@ -14,9 +14,11 @@ date: last-modified
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from IPython.display import Markdown, display
 from sklearn.calibration import calibration_curve
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
     brier_score_loss,
@@ -29,6 +31,8 @@ ROOT = Path("/Users/ac/comforter")
 PUB_ROOT = ROOT / "artifacts" / "internal_external_validation_death_publication"
 REMAIN_DIR = PUB_ROOT / "publication_ready_remain_logistic"
 MODELS_DIR = PUB_ROOT / "publication_ready"
+MERGED_MODELS_DIR = ROOT / "artifacts" / "internal_external_validation_death_merged_selected_combined"
+NEWS_LOGISTIC_DIR = ROOT / "artifacts" / "internal_external_validation_death_news_logistic"
 
 SITE_LABEL = {
     "Site_1": "Site 1",
@@ -45,11 +49,15 @@ SITE_COLORS = {
     "Site_4": "#E15759",
 }
 MODEL_ORDER = {
-    "TabICL": 1,
-    "Group lasso": 2,
-    "Group ridge": 3,
-    "AutoGluon": 4,
-    "Random forest": 5,
+    "NEWS logistic": 1,
+    "TabICL": 2,
+    "Group lasso": 3,
+    "Group ridge": 4,
+    "AutoGluon": 5,
+    "Random forest": 6,
+    "TabICL (Expanded feature set)": 7,
+    "AutoGluon (Expanded feature set)": 8,
+    "Random forest (Expanded feature set)": 9,
 }
 
 
@@ -155,14 +163,46 @@ def _plot_calibration_by_site(predictions: pd.DataFrame, title: str) -> None:
     plt.close(fig)
 
 
+def _calibration_intercept_and_slope(y_true: np.ndarray, y_pred: np.ndarray) -> tuple[float, float]:
+    y_true = np.asarray(y_true, dtype=int)
+    y_pred = np.asarray(y_pred, dtype=float)
+    probs = np.clip(y_pred, 1e-6, 1.0 - 1e-6)
+    logits = np.log(probs / (1.0 - probs)).reshape(-1, 1)
+
+    model = LogisticRegression(C=1e12, solver="lbfgs", fit_intercept=True, max_iter=2000)
+    model.fit(logits, y_true)
+    intercept = float(model.intercept_[0])
+    slope = float(model.coef_.ravel()[0])
+    return intercept, slope
+
+
 def _model_predictions(model_key: str) -> pd.DataFrame:
     df = pd.read_csv(MODELS_DIR / "combined_all_predictions.csv")
     out = df.loc[df["model"] == model_key].copy()
     if out.empty:
         raise ValueError(f"No rows found for model={model_key!r} in combined_all_predictions.csv")
     return out
+
+
+def _display_table(df: pd.DataFrame) -> None:
+    display(df.style.hide(axis="index"))
 ```
 
+## Methods
+
+We evaluated the transportability of the REMAIN mortality model and, in response to evidence of calibration instability, assessed alternative models developed using a leave-one-site-out internal-external validation framework across the four participating sites. For the original REMAIN model, Site 2 was treated as the temporal validation cohort because it represented a later cohort from the development site, whereas Sites 1, 3, and 4 were treated as external validation cohorts.
+
+### Models
+
+For the REMAIN validation, the published logistic regression coefficients were applied unchanged to each patient in the validation dataset, without model refitting or recalibration. The REMAIN model included age and age squared together with categorical terms for sex, comorbidity burden, acute resuscitation plan (ARP), REMAIN profile, hospital admission in the previous 24 hours, and surgery in the previous 24 hours. Site was used only to define validation strata and was not entered as a predictor.
+
+For development of updated models to predict in-hospital mortality after medical emergency team review, we used a harmonised predictor set available across sites at the time of assessment: age, sex, ARP, hospital admission in the previous 24 hours, surgery in the previous 24 hours, ICU discharge in the previous 24 hours, MET call history in the previous 24 hours, NEWS, ICD, and SOFA. A logistic regression model predicting in-hospital mortality with only the National Early Warning Score (NEWS) was used as a baseline comparator, because the NEWS is the tool currently used in practice to support escalation and decisions about seeking additional assistance for clinical deterioration. Candidate models were TabICL, group lasso logistic regression, group ridge logistic regression, AutoGluon tabular ensembles, and random forest. TabICL was implemented as a pre-trained transformer-based tabular classifier using an in-context learning approach, with eight ensemble members fitted within each validation iteration. AutoGluon was implemented as an automated ensemble framework for tabular prediction. Within each training fold, models were trained using the `good_quality` preset with five bagging folds and one stack level, and the resulting ensemble was refit to the full non-held-out training data before evaluation in the held-out site. For the grouped penalised logistic models, continuous predictors were represented using spline terms and grouped penalties were applied so that related terms entered or shrank together. In secondary analyses, TabICL, AutoGluon, and random forest were also evaluated using an expanded predictor set that added component-level NEWS, SOFA, and ICD variables to the core predictor set.
+
+### Data analysis
+
+Performance of the REMAIN model was assessed separately at each site. Site 2 was reported as temporal validation and Sites 1, 3, and 4 as external validation. Discrimination was summarised using the area under the receiver operating characteristic curve (ROC-AUC) and the area under the precision-recall curve (PR-AUC; average precision), overall prediction error using the Brier score, and calibration using calibration-in-the-large and calibration slope, estimated by regressing the observed outcome on the logit of the predicted probability. Site-level 95% confidence intervals for ROC-AUC, PR-AUC, Brier score, calibration-in-the-large, and calibration slope were estimated from 500 non-parametric bootstrap resamples. For the REMAIN model, pooled external validation estimates were obtained across Sites 1, 3, and 4 using random-effects meta-analysis with Sidik-Jonkman heterogeneity estimation and Hartung-Knapp confidence and prediction intervals; the temporal validation cohort was reported separately and was not included in the pooled external estimate. For ROC-AUC, within-site variance was estimated using the Hanley-McNeil method. PR-AUC and Brier score were pooled from site-specific estimates and corresponding standard errors.
+
+New model development was evaluated using leave-one-site-out internal-external validation. In each iteration, one site was held out for testing and the candidate model was trained on the remaining three sites; this process was repeated so that each site served once as the external holdout. For group lasso and group ridge, the penalty parameter was re-selected within each non-held-out training set using inner 5-fold stratified cross-validation before evaluation in the held-out site. AutoGluon models were trained within the non-held-out sites and then refit on the full training data before generating holdout predictions. Model comparison focused on held-out-site ROC-AUC pooled across the four sites using the same random-effects meta-analytic framework, while PR-AUC, Brier score, calibration-in-the-large, and calibration slope were summarised descriptively at the site level. For overall discrimination and calibration figures, out-of-site predictions were concatenated across held-out sites for each model.
 
 ## REMAIN external and temporal validation summary
 
@@ -191,6 +231,7 @@ def _model_predictions(model_key: str) -> pd.DataFrame:
 
 ```{python}
 #| echo: false
+#| classes: plain
 
 site_df = pd.read_csv(REMAIN_DIR / "table_2_site_level_metrics_with_ci.csv")
 site_df = site_df.copy()
@@ -219,7 +260,7 @@ site_display = pd.DataFrame(
         ),
     }
 )
-display(site_display)
+_display_table(site_display)
 display(Markdown("**Site-level 95% confidence intervals were estimated from 500 nonparametric bootstrap replicates.**"))
 ```
 
@@ -228,6 +269,7 @@ display(Markdown("**Site-level 95% confidence intervals were estimated from 500 
 
 ```{python}
 #| echo: false
+#| classes: plain
 
 meta_df = pd.read_csv(REMAIN_DIR / "table_1_internal_external_summary.csv")
 meta_display = pd.DataFrame(
@@ -241,7 +283,7 @@ meta_display = pd.DataFrame(
         "I² (%)": meta_df["I2 (%)"].map(lambda v: fmt(v, 1)),
     }
 )
-display(meta_display)
+_display_table(meta_display)
 
 remain_all = pd.read_csv(REMAIN_DIR / "combined_all_predictions.csv")
 display(
@@ -281,6 +323,7 @@ _plot_calibration_by_site(remain_pred, "Calibration plots for in-hospital mortal
 - The above results suggest that the REMAIN logistic regression model demonstrates reasonable discrimination but variable calibration across external and temporal validation cohorts.
 - Investigated the performance of models and techniques that could reduce the risk of poor calibration when using a model at a new site. These included approaches to reduce risk of overfitting by using penalized regression techniques.
 - Used  internal-external validation approach so that the model could be trained on data from multiple sites to reduce risk of overfitting to any single site.
+- For group lasso and group ridge, regularization strength (\(\lambda\)) was selected within each non-holdout training set using inner 5-fold stratified cross-validation before scoring the held-out site.
 - Also used a simplified measurement of care dependency and a set of predictors that are simpler to assess by a MET team at the time of decision-making and that we considered would be less susceptible to between-site measurement variability.
 
 
@@ -288,36 +331,118 @@ _plot_calibration_by_site(remain_pred, "Calibration plots for in-hospital mortal
 
 ```{python}
 #| echo: false
+#| classes: plain
 
-site_holdout = pd.read_csv(MODELS_DIR / "table_s1_site_level_metrics.csv")
-site_holdout = site_holdout.copy()
+site_holdout_base = pd.read_csv(MODELS_DIR / "table_s1_site_level_metrics.csv").copy()
+
+merged_pred = pd.read_csv(MERGED_MODELS_DIR / "all_predictions.csv")
+merged_model_label = {
+    "tabicl": "TabICL (Expanded feature set)",
+    "autogluon": "AutoGluon (Expanded feature set)",
+    "random_forest": "Random forest (Expanded feature set)",
+}
+
+merged_rows: list[dict[str, float | str | int]] = []
+for model_key, model_name in merged_model_label.items():
+    for site in SITE_KEYS:
+        site_df = merged_pred.loc[
+            (merged_pred["model"] == model_key) & (merged_pred["test_site"] == site)
+        ].copy()
+        if site_df.empty:
+            continue
+        y_true = site_df["y_true"].to_numpy(dtype=int)
+        y_prob = site_df["proba_death"].to_numpy(dtype=float)
+        citl, slope = _calibration_intercept_and_slope(y_true, y_prob)
+        merged_rows.append(
+            {
+                "Site": SITE_LABEL.get(site, site),
+                "Model": model_name,
+                "n": int(len(site_df)),
+                "Events": int(site_df["y_true"].sum()),
+                "Prevalence": float(site_df["y_true"].mean()),
+                "ROC-AUC": float(roc_auc_score(y_true, y_prob)),
+                "PR-AUC": float(average_precision_score(y_true, y_prob)),
+                "Brier": float(brier_score_loss(y_true, y_prob)),
+                "CITL": citl,
+                "Slope": slope,
+            }
+        )
+
+site_holdout_merged = pd.DataFrame(merged_rows)
+news_pred = pd.read_csv(NEWS_LOGISTIC_DIR / "all_predictions.csv")
+news_rows: list[dict[str, float | str | int]] = []
+for site in SITE_KEYS:
+    site_df = news_pred.loc[news_pred["test_site"] == site].copy()
+    if site_df.empty:
+        continue
+    y_true = site_df["y_true"].to_numpy(dtype=int)
+    y_prob = site_df["proba_death"].to_numpy(dtype=float)
+    citl, slope = _calibration_intercept_and_slope(y_true, y_prob)
+    news_rows.append(
+        {
+            "Site": SITE_LABEL.get(site, site),
+            "Model": "NEWS logistic",
+            "n": int(len(site_df)),
+            "Events": int(site_df["y_true"].sum()),
+            "Prevalence": float(site_df["y_true"].mean()),
+            "ROC-AUC": float(roc_auc_score(y_true, y_prob)),
+            "PR-AUC": float(average_precision_score(y_true, y_prob)),
+            "Brier": float(brier_score_loss(y_true, y_prob)),
+            "CITL": citl,
+            "Slope": slope,
+        }
+    )
+
+site_holdout_news = pd.DataFrame(news_rows)
+site_holdout = pd.concat([site_holdout_base, site_holdout_merged, site_holdout_news], ignore_index=True)
 site_holdout["site_rank"] = site_holdout["Site"].str.replace("Site ", "Site_", regex=False).map(SITE_ORDER)
 site_holdout["model_rank"] = site_holdout["Model"].map(MODEL_ORDER)
-site_holdout = site_holdout.sort_values(["site_rank", "model_rank"]).reset_index(drop=True)
+site_holdout = site_holdout.sort_values(["site_rank", "ROC-AUC", "model_rank"], ascending=[True, False, True]).reset_index(drop=True)
 
 for col in ["Prevalence", "ROC-AUC", "PR-AUC", "Brier", "CITL", "Slope"]:
     site_holdout[col] = site_holdout[col].map(lambda v: fmt(v, 4))
 
 site_holdout["n"] = site_holdout["n"].astype(int)
 site_holdout["Events"] = site_holdout["Events"].astype(int)
-display(site_holdout[["Site", "Model", "n", "Events", "Prevalence", "ROC-AUC", "PR-AUC", "Brier", "CITL", "Slope"]])
+site_holdout_display = site_holdout[["Site", "n", "Events", "Prevalence", "Model", "ROC-AUC", "PR-AUC", "Brier", "CITL", "Slope"]].copy()
+site_first_row = ~site_holdout_display["Site"].duplicated()
+for col in ["Site", "n", "Events", "Prevalence"]:
+    site_holdout_display[col] = site_holdout_display[col].where(site_first_row, "")
+_display_table(site_holdout_display)
 ```
 
 ### Random-Effects Meta-Analysis (Pooled Across Sites)
 
 ```{python}
 #| echo: false
+#| classes: plain
 
-model_meta = pd.read_csv(MODELS_DIR / "combined_summary_auc.csv")
-model_label = {
+model_meta_base = pd.read_csv(MODELS_DIR / "combined_summary_auc.csv")
+model_label_base = {
     "tabicl": "TabICL",
     "group_lasso": "Group lasso",
     "group_ridge": "Group ridge",
     "autogluon": "AutoGluon",
     "random_forest": "Random forest",
 }
-model_meta["Model"] = model_meta["model"].map(model_label).fillna(model_meta["model"])
-model_meta = model_meta.sort_values("pooled_auc", ascending=False).reset_index(drop=True)
+model_meta_base["Model"] = model_meta_base["model"].map(model_label_base).fillna(model_meta_base["model"])
+
+model_meta_merged = pd.read_csv(MERGED_MODELS_DIR / "summary_auc.csv")
+model_label_merged = {
+    "tabicl": "TabICL (Expanded feature set)",
+    "autogluon": "AutoGluon (Expanded feature set)",
+    "random_forest": "Random forest (Expanded feature set)",
+}
+model_meta_merged["Model"] = model_meta_merged["model"].map(model_label_merged).fillna(model_meta_merged["model"])
+
+model_meta_news = pd.read_csv(NEWS_LOGISTIC_DIR / "summary_auc.csv")
+model_meta_news["Model"] = model_meta_news["model"].map({"news_logistic": "NEWS logistic"}).fillna(
+    model_meta_news["model"]
+)
+
+model_meta = pd.concat([model_meta_base, model_meta_merged, model_meta_news], ignore_index=True)
+model_meta["model_rank"] = model_meta["Model"].map(MODEL_ORDER)
+model_meta = model_meta.sort_values(["pooled_auc", "model_rank"], ascending=[False, True]).reset_index(drop=True)
 
 model_meta_display = pd.DataFrame(
     {
@@ -329,14 +454,14 @@ model_meta_display = pd.DataFrame(
         "I² (%)": model_meta["i2_percent"].map(lambda v: fmt(v, 2)),
     }
 )
-display(model_meta_display)
+_display_table(model_meta_display)
 ```
 
 <small>Note: Prediction intervals in this internal-external validation context should not be directly compared to the pooled results for REMAIN external validation, as predictions for each hold-out site are from different models trained on data from each other site.</small>
 
 ### Interpretation
 
-- TabICL resulted in the numerically highest pooled ROC-AUC, with a point estimate of 0.8382 and a 95% confidence interval of 0.7631 to 0.8928. Additionally, the 95% prediction interval for TabICL were the most narrow across the models that were evaluated due to considerably less heterogeneity across sites. Inspection of measures to assess calibration also indicated that TabICL had the most consistent calibration across sites, with CITL values closest to 0 and slope values closest to 1 across sites. **However, the calibration estimates for the group ridge that I calculated are different to what is reported in the draft manuscript**.
+- TabICL resulted in the numerically highest pooled ROC-AUC. Additionally, the 95% prediction interval for TabICL were the most narrow across the models that were evaluated due to considerably less heterogeneity across sites. Inspection of measures to assess calibration also indicated that TabICL had the most consistent calibration across sites, with CITL values closest to 0 and slope values closest to 1 across sites.
 
 - Developing a new model to predict in-hospital mortality after MET review using an internal-external validation approach, which allowed for training on data from multiple sites, did not substantially improve calibration compared to the REMAIN logistic regression model.
 
@@ -394,4 +519,3 @@ _plot_pr_by_site(group_ridge_pred, "Precision-recall curves for in-hospital mort
 group_ridge_pred = _model_predictions("group_ridge")
 _plot_calibration_by_site(group_ridge_pred, "Calibration plots for in-hospital mortality using the Group ridge model")
 ```
-
