@@ -40,5 +40,7 @@ artifacts/
 NewComfModelData.csv
 NewModelV3.csv
 ComforterDatasetVal.csv
+IllnessSeverityScores.csv
+MergedData.csv
 # Local runtime logs
 *.log
