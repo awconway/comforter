@@ -14,12 +14,13 @@ bibliography: references.bib
 #| warning: false
 #| message: false
 
+from html import escape as html_escape
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from IPython.display import Markdown, display
+from IPython.display import Markdown, SVG, display
 from sklearn.calibration import calibration_curve
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -46,10 +47,16 @@ SITE_LABEL = {
 SITE_ORDER = {"Site_1": 1, "Site_2": 2, "Site_3": 3, "Site_4": 4}
 SITE_KEYS = ["Site_1", "Site_2", "Site_3", "Site_4"]
 SITE_COLORS = {
-    "Site_1": "#4E79A7",
-    "Site_2": "#F28E2B",
-    "Site_3": "#59A14F",
-    "Site_4": "#E15759",
+    "Site_1": "#111827",
+    "Site_2": "#4B5563",
+    "Site_3": "#6B7280",
+    "Site_4": "#9CA3AF",
+}
+SITE_MARKERS = {
+    "Site_1": "o",
+    "Site_2": "s",
+    "Site_3": "^",
+    "Site_4": "D",
 }
 MODEL_ORDER = {
     "NEWS logistic": 1,
@@ -61,6 +68,17 @@ MODEL_ORDER = {
     "TabICL (Expanded feature set)": 7,
     "AutoGluon (Expanded feature set)": 8,
     "Random forest (Expanded feature set)": 9,
+}
+MODEL_COLORS = {
+    "NEWS logistic": "#6B7280",
+    "TabICL": "#4E79A7",
+    "Group lasso": "#F28E2B",
+    "Group ridge": "#59A14F",
+    "AutoGluon": "#E15759",
+    "Random forest": "#B07AA1",
+    "TabICL (Expanded feature set)": "#2F6690",
+    "AutoGluon (Expanded feature set)": "#C44E52",
+    "Random forest (Expanded feature set)": "#8F63A9",
 }
 
 
@@ -74,6 +92,22 @@ def fmt_ci(est: float, lo: float, hi: float, n: int = 3) -> str:
 
 def fmt_range(lo: float, hi: float, n: int = 3) -> str:
     return f"{fmt(lo, n)} to {fmt(hi, n)}"
+
+
+def _apply_site_plot_style(ax: plt.Axes, legend_loc: str) -> None:
+    ax.set_facecolor("#FFFFFF")
+    ax.grid(True, which="major", color="#E5E7EB", linewidth=0.8, alpha=0.95)
+    ax.set_axisbelow(True)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.spines["left"].set_color("#D1D5DB")
+    ax.spines["bottom"].set_color("#D1D5DB")
+    ax.tick_params(colors="#6B7280", labelsize=8.8)
+    ax.xaxis.label.set_color("#111827")
+    ax.yaxis.label.set_color("#111827")
+    ax.title.set_color("#111827")
+    ax.title.set_fontsize(11.0)
+    ax.legend(loc=legend_loc, frameon=False, fontsize=8.9)
 
 
 def _plot_roc_by_site(predictions: pd.DataFrame, title: str) -> None:
@@ -91,11 +125,11 @@ def _plot_roc_by_site(predictions: pd.DataFrame, title: str) -> None:
             fpr,
             tpr,
             color=SITE_COLORS[site],
-            linewidth=2.4,
-            label=f"{SITE_LABEL.get(site, site)} (AUC {auc:.3f})",
+            linewidth=2.3,
+            label=f"{SITE_LABEL.get(site, site)} (AUC {auc:.2f})",
         )
     ax.set(xlim=(0.0, 1.0), ylim=(0.0, 1.0), xlabel="False positive rate", ylabel="True positive rate", title=title)
-    ax.legend(loc="lower right", frameon=True, framealpha=0.92, fontsize=9.0)
+    _apply_site_plot_style(ax, legend_loc="lower right")
     fig.tight_layout()
     plt.show()
     plt.close(fig)
@@ -110,7 +144,7 @@ def _plot_pr_by_site(predictions: pd.DataFrame, title: str) -> None:
         linestyle="--",
         color="#9CA3AF",
         linewidth=1.3,
-        label=f"Prevalence = {prevalence:.3f}",
+        label=f"Prevalence = {prevalence:.2f}",
     )
     for site in SITE_KEYS:
         site_df = predictions.loc[predictions["test_site"] == site]
@@ -124,11 +158,11 @@ def _plot_pr_by_site(predictions: pd.DataFrame, title: str) -> None:
             recall,
             precision,
             color=SITE_COLORS[site],
-            linewidth=2.4,
-            label=f"{SITE_LABEL.get(site, site)} (AP {ap:.3f})",
+            linewidth=2.3,
+            label=f"{SITE_LABEL.get(site, site)} (AP {ap:.2f})",
         )
     ax.set(xlim=(0.0, 1.0), ylim=(0.0, 1.0), xlabel="Recall", ylabel="Precision", title=title)
-    ax.legend(loc="upper right", frameon=True, framealpha=0.92, fontsize=9.0)
+    _apply_site_plot_style(ax, legend_loc="upper right")
     fig.tight_layout()
     plt.show()
     plt.close(fig)
@@ -149,18 +183,21 @@ def _plot_calibration_by_site(predictions: pd.DataFrame, title: str) -> None:
             mean_pred,
             frac_pos,
             color=SITE_COLORS[site],
-            linewidth=2.3,
-            marker="o",
-            markersize=5,
+            linewidth=2.1,
+            marker=SITE_MARKERS[site],
+            markersize=4.8,
+            markerfacecolor="#FFFFFF",
+            markeredgecolor=SITE_COLORS[site],
+            markeredgewidth=0.9,
             alpha=0.92,
-            label=f"{SITE_LABEL.get(site, site)} (Brier {brier:.3f})",
+            label=f"{SITE_LABEL.get(site, site)} (Brier {brier:.2f})",
         )
     ax.set_xlim(0.0, 1.0)
     ax.set_ylim(0.0, 1.0)
     ax.set_xlabel("Mean predicted probability")
     ax.set_ylabel("Observed frequency")
     ax.set_title(title)
-    ax.legend(loc="lower right", frameon=True, framealpha=0.92, fontsize=9.0)
+    _apply_site_plot_style(ax, legend_loc="lower right")
     fig.tight_layout()
     plt.show()
     plt.close(fig)
@@ -199,6 +236,387 @@ def _model_predictions(model_key: str, source: str = "baseline") -> pd.DataFrame
 
 def _display_table(df: pd.DataFrame) -> None:
     display(df.style.hide(axis="index"))
+
+
+def _plot_internal_external_tabicl_news_comparison(
+    tabicl_predictions: pd.DataFrame,
+    news_predictions: pd.DataFrame,
+) -> None:
+    model_specs = [
+        {
+            "label": "TabICL",
+            "predictions": tabicl_predictions,
+            "color": "#111827",
+            "linestyle": "-",
+            "marker": "o",
+        },
+        {
+            "label": "NEWS logistic",
+            "predictions": news_predictions,
+            "color": "#6B7280",
+            "linestyle": "--",
+            "marker": "^",
+        },
+    ]
+
+    fig, axes = plt.subplots(1, 2, figsize=(11.8, 5.2))
+    roc_ax, cal_ax = axes
+
+    roc_ax.plot([0, 1], [0, 1], linestyle="--", color="#D1D5DB", linewidth=1.0, zorder=1)
+    for spec in model_specs:
+        pred = spec["predictions"].copy()
+        y_true = pred["y_true"].to_numpy(dtype=int)
+        y_prob = pred["proba_death"].to_numpy(dtype=float)
+        fpr, tpr, _ = roc_curve(y_true, y_prob)
+        auc = roc_auc_score(y_true, y_prob)
+        roc_ax.plot(
+            fpr,
+            tpr,
+            color=spec["color"],
+            linestyle=spec["linestyle"],
+            linewidth=2.3,
+            label=f"{spec['label']} (AUC {auc:.2f})",
+            zorder=2,
+        )
+
+    roc_ax.set_xlim(0.0, 1.0)
+    roc_ax.set_ylim(0.0, 1.0)
+    roc_ax.set_xlabel("False positive rate")
+    roc_ax.set_ylabel("True positive rate")
+    roc_ax.set_title("A  ROC curve", loc="left", fontsize=11.2, fontweight="bold", pad=8)
+    roc_ax.grid(color="#E5E7EB", linewidth=0.8, alpha=0.85)
+    roc_ax.legend(loc="lower right", frameon=False, fontsize=8.9)
+
+    cal_ax.plot([0, 1], [0, 1], linestyle="--", color="#D1D5DB", linewidth=1.0, zorder=1)
+    for spec in model_specs:
+        pred = spec["predictions"].copy()
+        y_true = pred["y_true"].to_numpy(dtype=int)
+        y_prob = pred["proba_death"].to_numpy(dtype=float)
+        frac_pos, mean_pred = calibration_curve(y_true, y_prob, n_bins=10, strategy="quantile")
+        brier = brier_score_loss(y_true, y_prob)
+        cal_ax.plot(
+            mean_pred,
+            frac_pos,
+            color=spec["color"],
+            linestyle=spec["linestyle"],
+            linewidth=2.1,
+            marker=spec["marker"],
+            markersize=4.8,
+            markerfacecolor="#FFFFFF",
+            markeredgewidth=0.9,
+            label=f"{spec['label']} (Brier {brier:.2f})",
+            zorder=2,
+        )
+
+    cal_ax.set_xlim(0.0, 1.0)
+    cal_ax.set_ylim(0.0, 1.0)
+    cal_ax.set_xlabel("Mean predicted probability")
+    cal_ax.set_ylabel("Observed frequency")
+    cal_ax.set_title("B  Calibration plot", loc="left", fontsize=11.2, fontweight="bold", pad=8)
+    cal_ax.grid(color="#E5E7EB", linewidth=0.8, alpha=0.85)
+    cal_ax.legend(loc="lower right", frameon=False, fontsize=8.9)
+
+    for ax in axes:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["left"].set_color("#D1D5DB")
+        ax.spines["bottom"].set_color("#D1D5DB")
+        ax.tick_params(colors="#6B7280", labelsize=8.8)
+
+    fig.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
+def _random_effects_weight_percent(site_rows: pd.DataFrame, tau2_logit_auc: float) -> np.ndarray:
+    auc = np.clip(site_rows["auc"].to_numpy(dtype=float), 1e-6, 1.0 - 1e-6)
+    auc_var = site_rows["auc_variance"].to_numpy(dtype=float)
+    logit_var = auc_var / (auc**2 * (1.0 - auc) ** 2)
+    weights = 1.0 / (logit_var + float(tau2_logit_auc))
+    total = float(np.sum(weights))
+    if not np.isfinite(total) or total <= 0.0:
+        return np.full(len(site_rows), np.nan, dtype=float)
+    return 100.0 * weights / total
+
+
+def _plot_internal_external_auc_forest(
+    fold_auc: pd.DataFrame,
+    summary_auc: pd.DataFrame,
+    *,
+    image_format: str = "svg",
+) -> None:
+    ranked = summary_auc.copy()
+    ranked["model_rank"] = ranked["Model"].map(MODEL_ORDER)
+    ranked = ranked.sort_values(["pooled_auc", "model_rank"], ascending=[False, True]).reset_index(drop=True)
+    display_label_map = {
+        "TabICL (Expanded feature set)": "TabICL",
+        "AutoGluon (Expanded feature set)": "AutoGluon",
+        "Random forest (Expanded feature set)": "Random forest",
+    }
+
+    def _site_auc_ci(auc: float, auc_variance: float) -> tuple[float, float]:
+        auc_clip = float(np.clip(auc, 1e-6, 1.0 - 1e-6))
+        variance = float(max(auc_variance, 0.0))
+        logit_auc = float(np.log(auc_clip / (1.0 - auc_clip)))
+        se_logit = float(np.sqrt(variance) / (auc_clip * (1.0 - auc_clip)))
+        lower = 1.0 / (1.0 + np.exp(-(logit_auc - 1.96 * se_logit)))
+        upper = 1.0 / (1.0 + np.exp(-(logit_auc + 1.96 * se_logit)))
+        return float(lower), float(upper)
+
+    rows: list[dict[str, float | str]] = []
+    for model in ranked["Model"]:
+        pooled_row = ranked.loc[ranked["Model"] == model].iloc[0]
+        display_model = display_label_map.get(model, model)
+        site_rows = fold_auc.loc[fold_auc["Model"] == model].copy()
+        site_rows["site_rank"] = site_rows["test_site"].map(SITE_ORDER)
+        site_rows = site_rows.sort_values("site_rank")
+        site_rows["weight_percent"] = _random_effects_weight_percent(site_rows, float(pooled_row["tau2_logit_auc"]))
+
+        rows.append(
+            {
+                "kind": "model_header",
+                "label": display_model,
+                "events": "",
+                "estimate": np.nan,
+                "ci_lower": np.nan,
+                "ci_upper": np.nan,
+                "weight": np.nan,
+                "right_text": "",
+                "tau2": float(pooled_row["tau2_logit_auc"]),
+                "i2": float(pooled_row["i2_percent"]),
+                "pi_lower": float(pooled_row["pi_95_lower"]),
+                "pi_upper": float(pooled_row["pi_95_upper"]),
+            }
+        )
+        for _, row in site_rows.iterrows():
+            ci_lower, ci_upper = _site_auc_ci(float(row["auc"]), float(row["auc_variance"]))
+            estimate = float(row["auc"])
+            rows.append(
+                {
+                    "kind": "site",
+                    "label": SITE_LABEL.get(row["test_site"], row["test_site"]),
+                    "events": f"{int(row['n_pos'])}/{int(row['n_test'])}",
+                    "estimate": estimate,
+                    "ci_lower": ci_lower,
+                    "ci_upper": ci_upper,
+                    "weight": float(row["weight_percent"]),
+                    "right_text": f"{estimate:.2f} ({ci_lower:.2f} to {ci_upper:.2f})",
+                    "heterogeneity": "",
+                }
+            )
+
+        pooled_estimate = float(pooled_row["pooled_auc"])
+        pooled_lower = float(pooled_row["ci_95_lower"])
+        pooled_upper = float(pooled_row["ci_95_upper"])
+        rows.append(
+            {
+                "kind": "pooled",
+                "label": "Pooled",
+                "events": f"{int(site_rows['n_pos'].sum())}/{int(site_rows['n_test'].sum())}",
+                "estimate": pooled_estimate,
+                "ci_lower": pooled_lower,
+                "ci_upper": pooled_upper,
+                "weight": np.nan,
+                "right_text": f"{pooled_estimate:.2f} ({pooled_lower:.2f} to {pooled_upper:.2f})",
+                "heterogeneity": "",
+            }
+        )
+
+    intervals = [
+        (float(row["ci_lower"]), float(row["ci_upper"]))
+        for row in rows
+        if row["kind"] in {"site", "pooled"}
+    ]
+    x_lower = min(lower for lower, _ in intervals)
+    x_upper = max(upper for _, upper in intervals)
+    x_min = max(0.5, np.floor((x_lower - 0.015) / 0.05) * 0.05)
+    x_max = min(0.99, np.ceil((x_upper + 0.015) / 0.05) * 0.05)
+    ticks = np.arange(x_min, x_max + 1e-9, 0.05)
+
+    width = 1320
+    header_bottom = 82
+    row_h = 25
+    group_header_h = 29
+    pooled_h = 27
+    group_gap = 8
+    bottom_pad = 92
+    plot_x = 348
+    plot_w = 386
+    label_x = 24
+    site_label_x = 44
+    events_x = 250
+    weight_x = 805
+    estimate_x = 890
+    text_primary = "#111827"
+    text_secondary = "#111827"
+    text_muted = "#111827"
+    border = "#D1D5DB"
+    grid = "#E5E7EB"
+    accent = "#111827"
+    pooled = "#111827"
+
+    y = header_bottom + 18
+    placed_rows: list[dict[str, float | str]] = []
+    for row in rows:
+        kind = str(row["kind"])
+        height = group_header_h if kind == "model_header" else pooled_h if kind == "pooled" else row_h
+        placed = row.copy()
+        placed["y"] = y + height / 2.0
+        placed["top"] = y
+        placed["height"] = height
+        placed_rows.append(placed)
+        y += height
+        if kind == "pooled":
+            y += group_gap
+
+    height = int(y + bottom_pad)
+    plot_top = header_bottom + 12
+    plot_bottom = height - bottom_pad + 12
+
+    def _x(value: float) -> float:
+        return plot_x + (float(value) - float(x_min)) / (float(x_max) - float(x_min)) * plot_w
+
+    def _text(
+        x: float,
+        y_pos: float,
+        text: str,
+        *,
+        size: float = 14,
+        weight: int | str = 400,
+        fill: str = text_primary,
+        anchor: str = "start",
+        extra: str = "",
+    ) -> str:
+        return (
+            f'<text x="{x:.1f}" y="{y_pos:.1f}" text-anchor="{anchor}" '
+            f'font-size="{size}" font-weight="{weight}" fill="{fill}" '
+            f'dominant-baseline="middle" {extra}>{html_escape(str(text))}</text>'
+        )
+
+    def _diamond(cx: float, cy: float, half_w: float, half_h: float, fill: str, stroke: str) -> str:
+        points = f"{cx:.1f},{cy - half_h:.1f} {cx + half_w:.1f},{cy:.1f} {cx:.1f},{cy + half_h:.1f} {cx - half_w:.1f},{cy:.1f}"
+        return f'<polygon points="{points}" fill="{fill}" stroke="{stroke}" stroke-width="1.2" />'
+
+    def _heterogeneity_text(x: float, y_pos: float, row: dict[str, float | str]) -> str:
+        return (
+            f'<text x="{x:.1f}" y="{y_pos:.1f}" text-anchor="start" '
+            f'font-size="12.3" font-weight="400" fill="{text_muted}" dominant-baseline="middle">'
+            f'Tau²={float(row["tau2"]):.2f}; I²={float(row["i2"]):.2f}%; '
+            f'PI {float(row["pi_lower"]):.2f}-{float(row["pi_upper"]):.2f}'
+            "</text>"
+        )
+
+    svg_parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" width="{width}" height="{height}" style="max-width:100%;height:auto;" role="img" aria-label="Forest plot of site-specific and pooled ROC-AUC estimates">',
+        "<style>text{font-family:Arial,Helvetica,sans-serif}.small{letter-spacing:0}</style>",
+        '<rect x="1" y="1" width="{:.1f}" height="{:.1f}" rx="14" fill="#FFFFFF" stroke="#B8BDC4" stroke-width="1.2" />'.format(width - 2, height - 2),
+        '<rect x="1" y="1" width="{:.1f}" height="80" rx="14" fill="#FFFFFF" stroke="none" />'.format(width - 2),
+        f'<line x1="1" y1="{header_bottom}" x2="{width - 1}" y2="{header_bottom}" stroke="#B8BDC4" stroke-width="1.1" />',
+        _text(label_x, 34, "Model / site", size=18, weight=700),
+        _text(events_x, 34, "Deaths / total", size=18, weight=700, anchor="middle"),
+        _text(plot_x + plot_w / 2, 26, "ROC-AUC", size=18, weight=700, anchor="middle"),
+        _text(plot_x + plot_w / 2, 56, "(95% CI)", size=15, weight=700, anchor="middle"),
+        _text(weight_x, 34, "Weight (%)", size=18, weight=700, anchor="middle"),
+        _text(estimate_x, 26, "ROC-AUC", size=18, weight=700),
+        _text(estimate_x, 56, "(95% CI)", size=15, weight=700),
+        f'<rect x="{plot_x:.1f}" y="{plot_top:.1f}" width="{plot_w:.1f}" height="{plot_bottom - plot_top:.1f}" rx="12" fill="#FFFFFF" stroke="{border}" stroke-width="1.2" />',
+    ]
+
+    for tick in ticks:
+        tx = _x(float(tick))
+        svg_parts.append(
+            f'<line x1="{tx:.1f}" y1="{plot_top:.1f}" x2="{tx:.1f}" y2="{plot_bottom:.1f}" stroke="{grid}" stroke-width="1" />'
+        )
+
+    for row in placed_rows:
+        kind = str(row["kind"])
+        y_mid = float(row["y"])
+        if kind == "model_header":
+            svg_parts.append(_text(label_x, y_mid, str(row["label"]), size=14.8, weight=700))
+            svg_parts.append(_heterogeneity_text(estimate_x, y_mid, row))
+            continue
+
+        is_pooled = kind == "pooled"
+        estimate = float(row["estimate"])
+        lower = float(row["ci_lower"])
+        upper = float(row["ci_upper"])
+        x_estimate = _x(estimate)
+        x_lower_ci = _x(lower)
+        x_upper_ci = _x(upper)
+        line_color = pooled if is_pooled else accent
+        line_width = 3.1 if is_pooled else 2.25
+        svg_parts.append(
+            f'<line x1="{x_lower_ci:.1f}" y1="{y_mid:.1f}" x2="{x_upper_ci:.1f}" y2="{y_mid:.1f}" stroke="{line_color}" stroke-width="{line_width}" stroke-linecap="round" />'
+        )
+        if is_pooled:
+            svg_parts.append(_diamond(x_estimate, y_mid, 8.0, 7.0, pooled, pooled))
+        else:
+            marker_half = 5.2 + 0.08 * float(row["weight"])
+            svg_parts.append(_diamond(x_estimate, y_mid, marker_half, marker_half, accent, "#FFFFFF"))
+
+        label_weight = 700 if is_pooled else 400
+        label_fill = text_primary if is_pooled else text_secondary
+        svg_parts.append(_text(site_label_x, y_mid, str(row["label"]), size=13.2, weight=label_weight, fill=label_fill))
+        svg_parts.append(_text(events_x, y_mid, str(row["events"]), size=13.2, fill=text_secondary, anchor="middle"))
+        if not is_pooled and np.isfinite(float(row["weight"])):
+            svg_parts.append(_text(weight_x, y_mid, f"{float(row['weight']):.2f}", size=13.2, fill=text_secondary, anchor="middle"))
+        svg_parts.append(
+            _text(
+                estimate_x,
+                y_mid,
+                str(row["right_text"]),
+                size=13.2,
+                weight=700 if is_pooled else 400,
+                fill=text_primary if is_pooled else text_secondary,
+            )
+        )
+
+    axis_y = plot_bottom + 20
+    svg_parts.append(f'<line x1="{plot_x:.1f}" y1="{plot_bottom:.1f}" x2="{plot_x + plot_w:.1f}" y2="{plot_bottom:.1f}" stroke="{border}" stroke-width="1.1" />')
+    for tick in ticks:
+        tx = _x(float(tick))
+        svg_parts.append(f'<line x1="{tx:.1f}" y1="{plot_bottom:.1f}" x2="{tx:.1f}" y2="{plot_bottom + 6:.1f}" stroke="{text_muted}" stroke-width="1" />')
+        svg_parts.append(_text(tx, axis_y, f"{tick:.2f}", size=12.5, fill=text_secondary, anchor="middle"))
+    svg_parts.append(_text(plot_x + plot_w / 2, plot_bottom + 44, "ROC-AUC", size=14.5, fill=text_primary, anchor="middle"))
+
+    legend_y = height - 18
+    legend_x = 34
+    svg_parts.append(_diamond(legend_x, legend_y, 6.8, 6.8, accent, "#FFFFFF"))
+    svg_parts.append(_text(legend_x + 18, legend_y, "Site estimate", size=12.6, fill=text_secondary))
+    svg_parts.append(f'<line x1="{legend_x + 126:.1f}" y1="{legend_y:.1f}" x2="{legend_x + 174:.1f}" y2="{legend_y:.1f}" stroke="{pooled}" stroke-width="3.1" stroke-linecap="round" />')
+    svg_parts.append(_diamond(legend_x + 150, legend_y, 7.0, 6.0, pooled, pooled))
+    svg_parts.append(_text(legend_x + 190, legend_y, "Pooled estimate and 95% CI", size=12.6, fill=text_secondary))
+    svg_parts.append("</svg>")
+
+    svg = "\n".join(svg_parts)
+    figure_path = PUB_ROOT / "publication_ready" / "figure_internal_external_auc_forest.svg"
+    figure_path.parent.mkdir(parents=True, exist_ok=True)
+    figure_path.write_text(svg, encoding="utf-8")
+    png_path = figure_path.with_suffix(".png")
+    png_data = None
+    try:
+        import base64
+        import shutil
+        import subprocess
+
+        sips_path = shutil.which("sips")
+        if sips_path is not None:
+            subprocess.run(
+                [sips_path, "-s", "format", "png", str(figure_path), "--out", str(png_path)],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            png_data = base64.b64encode(png_path.read_bytes()).decode("ascii")
+    except Exception:
+        png_data = None
+
+    if png_data is None:
+        display(SVG(svg))
+    elif image_format == "png":
+        display({"image/png": png_data}, raw=True)
+    else:
+        display(SVG(svg))
 ```
 
 ## Methods
@@ -440,7 +858,7 @@ _display_table(site_holdout_display)
 #| echo: false
 #| classes: plain
 
-model_meta_base = pd.read_csv(MODELS_DIR / "combined_summary_auc.csv")
+model_fold_base = pd.read_csv(MODELS_DIR / "combined_fold_auc.csv")
 model_label_base = {
     "tabicl": "TabICL",
     "group_lasso": "Group lasso",
@@ -448,21 +866,30 @@ model_label_base = {
     "autogluon": "AutoGluon",
     "random_forest": "Random forest",
 }
+model_fold_base["Model"] = model_fold_base["model"].map(model_label_base).fillna(model_fold_base["model"])
+model_meta_base = pd.read_csv(MODELS_DIR / "combined_summary_auc.csv")
 model_meta_base["Model"] = model_meta_base["model"].map(model_label_base).fillna(model_meta_base["model"])
 
-model_meta_merged = pd.read_csv(MERGED_MODELS_DIR / "summary_auc.csv")
+model_fold_merged = pd.read_csv(MERGED_MODELS_DIR / "fold_auc.csv")
 model_label_merged = {
     "tabicl": "TabICL (Expanded feature set)",
     "autogluon": "AutoGluon (Expanded feature set)",
     "random_forest": "Random forest (Expanded feature set)",
 }
+model_fold_merged["Model"] = model_fold_merged["model"].map(model_label_merged).fillna(model_fold_merged["model"])
+model_meta_merged = pd.read_csv(MERGED_MODELS_DIR / "summary_auc.csv")
 model_meta_merged["Model"] = model_meta_merged["model"].map(model_label_merged).fillna(model_meta_merged["model"])
 
+model_fold_news = pd.read_csv(NEWS_LOGISTIC_DIR / "fold_auc.csv")
+model_fold_news["Model"] = model_fold_news["model"].map({"news_logistic": "NEWS logistic"}).fillna(
+    model_fold_news["model"]
+)
 model_meta_news = pd.read_csv(NEWS_LOGISTIC_DIR / "summary_auc.csv")
 model_meta_news["Model"] = model_meta_news["model"].map({"news_logistic": "NEWS logistic"}).fillna(
     model_meta_news["model"]
 )
 
+model_fold = pd.concat([model_fold_base, model_fold_merged, model_fold_news], ignore_index=True)
 model_meta = pd.concat([model_meta_base, model_meta_merged, model_meta_news], ignore_index=True)
 model_meta["model_rank"] = model_meta["Model"].map(MODEL_ORDER)
 model_meta = model_meta.sort_values(["pooled_auc", "model_rank"], ascending=[False, True]).reset_index(drop=True)
@@ -480,7 +907,66 @@ model_meta_display = pd.DataFrame(
 _display_table(model_meta_display)
 ```
 
-<small>Note: Prediction intervals in this internal-external validation context should not be directly compared to the pooled results for REMAIN external validation, as predictions for each hold-out site are from different models trained on data from each other site.</small>
+### ROC-AUC Forest Plot Across Sites
+
+::: {.content-visible when-format="html"}
+
+```{python}
+#| echo: false
+#| fig-cap: "Forest plot of site-specific and pooled ROC-AUC estimates from internal-external validation. Abbreviations: ROC-AUC, area under the receiver operating characteristic curve; CI, confidence interval; PI, prediction interval; Tau^2^, between-site variance on the logit(AUC) scale; I^2^, inconsistency statistic."
+
+forest_models = {
+    "NEWS logistic",
+    "Group lasso",
+    "Group ridge",
+    "TabICL (Expanded feature set)",
+    "AutoGluon (Expanded feature set)",
+    "Random forest (Expanded feature set)",
+}
+
+forest_fold = model_fold.loc[model_fold["Model"].isin(forest_models)].copy()
+forest_meta = model_meta.loc[model_meta["Model"].isin(forest_models)].copy()
+_plot_internal_external_auc_forest(forest_fold, forest_meta, image_format="svg")
+```
+
+:::
+
+::: {.content-visible when-format="docx"}
+
+```{python}
+#| echo: false
+#| fig-cap: "Forest plot of site-specific and pooled ROC-AUC estimates from internal-external validation. Abbreviations: ROC-AUC, area under the receiver operating characteristic curve; CI, confidence interval; PI, prediction interval; Tau^2^, between-site variance on the logit(AUC) scale; I^2^, inconsistency statistic."
+
+forest_models = {
+    "NEWS logistic",
+    "Group lasso",
+    "Group ridge",
+    "TabICL (Expanded feature set)",
+    "AutoGluon (Expanded feature set)",
+    "Random forest (Expanded feature set)",
+}
+
+forest_fold = model_fold.loc[model_fold["Model"].isin(forest_models)].copy()
+forest_meta = model_meta.loc[model_meta["Model"].isin(forest_models)].copy()
+_plot_internal_external_auc_forest(forest_fold, forest_meta, image_format="png")
+```
+
+:::
+
+<small>Note: Site-specific confidence intervals were derived from the Hanley-McNeil standard error on the logit(AUC) scale. Weight (%) denotes the random-effects weight contributed by each site on the logit(AUC) scale. Pooled estimates, 95% confidence intervals, and prediction intervals were taken from the random-effects meta-analysis across the four sites.</small>
+
+### TabICL Versus NEWS Logistic
+
+```{python}
+#| echo: false
+#| fig-cap: "Receiver operating characteristic and calibration plots comparing the TabICL model with expanded feature set and NEWS logistic, using concatenated out-of-site predictions across all held-out sites from internal-external validation"
+
+tabicl_compare_pred = _model_predictions("tabicl", source="expanded")
+news_compare_pred = _model_predictions("news_logistic", source="news")
+_plot_internal_external_tabicl_news_comparison(tabicl_compare_pred, news_compare_pred)
+```
+
+<small>Note: For each model, predictions from all held-out sites were concatenated so that each curve reflects pooled out-of-site performance across the full internal-external validation dataset.</small>
 
 ### Interpretation
 

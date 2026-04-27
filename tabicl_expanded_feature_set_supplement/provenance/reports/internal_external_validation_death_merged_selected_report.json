@@ -1,0 +1,232 @@
+{
+  "metadata": {
+    "data_path": "/Users/ac/comforter/MergedData.csv",
+    "output_dir": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected",
+    "target": "DeathHospDisch",
+    "facility_column": "Facility",
+    "id_column": "Id",
+    "seed": 42,
+    "feature_columns": [
+      "Age",
+      "Sex",
+      "ARP",
+      "AdmitPrev24h",
+      "SurgPrev24h",
+      "ICUDischPrev24h",
+      "METWithinPrev24h",
+      "NEWS",
+      "ICD",
+      "SOFA",
+      "sofa_cns",
+      "sofa_cvs",
+      "sofa_coag",
+      "sofa_livr",
+      "sofa_renl",
+      "sofa_resp",
+      "news_loc",
+      "news_pulse",
+      "news_sbp",
+      "news_temp",
+      "news_resp",
+      "news_spo2",
+      "news_o2",
+      "ICD_nutrition",
+      "ICD_continence",
+      "ICD_hygiene",
+      "ICD_mobilisation",
+      "ICD_observation",
+      "ICD_medication",
+      "ICD_cognition",
+      "ICD_skin"
+    ],
+    "facility_levels": [
+      "Site_1",
+      "Site_2",
+      "Site_3",
+      "Site_4"
+    ],
+    "dropped_predictors": [],
+    "model_count": 2,
+    "models": [
+      "tabicl",
+      "random_forest"
+    ]
+  },
+  "models": {
+    "tabicl": {
+      "config_source": "/Users/ac/comforter/artifacts/tabicl_death_final/final_report.json",
+      "model_config": {
+        "n_estimators": 8,
+        "norm_methods": null,
+        "feat_shuffle_method": "shift",
+        "class_shuffle_method": "shift",
+        "outlier_threshold": 4.0,
+        "softmax_temperature": 0.9,
+        "average_logits": true,
+        "support_many_classes": true,
+        "batch_size": 8,
+        "checkpoint_version": "tabicl-classifier-v2-20260212.ckpt",
+        "device": "cpu",
+        "feature_set": "raw_core"
+      },
+      "fold_auc": [
+        {
+          "model": "tabicl",
+          "test_site": "Site_1",
+          "train_sites": "Site_2|Site_3|Site_4",
+          "auc": 0.8512550607287449,
+          "auc_variance": 0.0006563176643359343,
+          "auc_se": 0.025618697553465405,
+          "n_test": 485,
+          "n_pos": 95,
+          "n_neg": 390,
+          "prevalence": 0.1958762886597938
+        },
+        {
+          "model": "tabicl",
+          "test_site": "Site_2",
+          "train_sites": "Site_1|Site_3|Site_4",
+          "auc": 0.8234317862165963,
+          "auc_variance": 0.0007863847728225746,
+          "auc_se": 0.0280425528941745,
+          "n_test": 485,
+          "n_pos": 90,
+          "n_neg": 395,
+          "prevalence": 0.18556701030927836
+        },
+        {
+          "model": "tabicl",
+          "test_site": "Site_3",
+          "train_sites": "Site_1|Site_2|Site_4",
+          "auc": 0.8054636591478697,
+          "auc_variance": 0.0007344436726025518,
+          "auc_se": 0.027100621258608664,
+          "n_test": 485,
+          "n_pos": 105,
+          "n_neg": 380,
+          "prevalence": 0.21649484536082475
+        },
+        {
+          "model": "tabicl",
+          "test_site": "Site_4",
+          "train_sites": "Site_1|Site_2|Site_3",
+          "auc": 0.8931329423264908,
+          "auc_variance": 0.0004351361842617447,
+          "auc_se": 0.02085991812691854,
+          "n_test": 482,
+          "n_pos": 110,
+          "n_neg": 372,
+          "prevalence": 0.22821576763485477
+        }
+      ],
+      "pooled_auc_random_effects": {
+        "method": "random-effects meta-analysis",
+        "tau2_estimator": "Sidik-Jonkman",
+        "ci_method": "Hartung-Knapp-Sidik-Jonkman",
+        "prediction_interval_method": "Hartung-Knapp t-distribution",
+        "effect_scale": "logit_auc",
+        "within_site_variance": "Hanley-McNeil AUC variance with delta-method to logit(AUC)",
+        "k_sites": 4,
+        "pooled_auc": 0.8442872306740126,
+        "pooled_auc_ci_95": {
+          "lower": 0.7698033674255574,
+          "upper": 0.8978681028776644
+        },
+        "pooled_auc_prediction_interval_95": {
+          "lower": 0.6842575629278255,
+          "upper": 0.9313460187037252
+        },
+        "pooled_logit_auc": 1.6904796695568238,
+        "pooled_logit_auc_se_hksj": 0.151857525897153,
+        "tau2_logit_auc": 0.0599788005566628,
+        "i2_percent": 56.92076694916772,
+        "q_statistic": 6.9639122787076655,
+        "degrees_of_freedom": 3
+      }
+    },
+    "random_forest": {
+      "config_source": "/Users/ac/comforter/artifacts/random_forest_death_tuned/report.json",
+      "model_config": {
+        "n_estimators": 400,
+        "max_depth": 8,
+        "min_samples_split": 2,
+        "min_samples_leaf": 1,
+        "max_features": "sqrt"
+      },
+      "fold_auc": [
+        {
+          "model": "random_forest",
+          "test_site": "Site_1",
+          "train_sites": "Site_2|Site_3|Site_4",
+          "auc": 0.8442375168690959,
+          "auc_variance": 0.0006805414538790883,
+          "auc_se": 0.02608718945917878,
+          "n_test": 485,
+          "n_pos": 95,
+          "n_neg": 390,
+          "prevalence": 0.1958762886597938
+        },
+        {
+          "model": "random_forest",
+          "test_site": "Site_2",
+          "train_sites": "Site_1|Site_3|Site_4",
+          "auc": 0.8150210970464136,
+          "auc_variance": 0.0008134593354387424,
+          "auc_se": 0.028521208519954804,
+          "n_test": 485,
+          "n_pos": 90,
+          "n_neg": 395,
+          "prevalence": 0.18556701030927836
+        },
+        {
+          "model": "random_forest",
+          "test_site": "Site_3",
+          "train_sites": "Site_1|Site_2|Site_4",
+          "auc": 0.7941604010025063,
+          "auc_variance": 0.0007641373697655772,
+          "auc_se": 0.027643034742328442,
+          "n_test": 485,
+          "n_pos": 105,
+          "n_neg": 380,
+          "prevalence": 0.21649484536082475
+        },
+        {
+          "model": "random_forest",
+          "test_site": "Site_4",
+          "train_sites": "Site_1|Site_2|Site_3",
+          "auc": 0.8765151515151515,
+          "auc_variance": 0.000492706903733784,
+          "auc_se": 0.02219700213393205,
+          "n_test": 482,
+          "n_pos": 110,
+          "n_neg": 372,
+          "prevalence": 0.22821576763485477
+        }
+      ],
+      "pooled_auc_random_effects": {
+        "method": "random-effects meta-analysis",
+        "tau2_estimator": "Sidik-Jonkman",
+        "ci_method": "Hartung-Knapp-Sidik-Jonkman",
+        "prediction_interval_method": "Hartung-Knapp t-distribution",
+        "effect_scale": "logit_auc",
+        "within_site_variance": "Hanley-McNeil AUC variance with delta-method to logit(AUC)",
+        "k_sites": 4,
+        "pooled_auc": 0.8329534309157827,
+        "pooled_auc_ci_95": {
+          "lower": 0.7658407270956645,
+          "upper": 0.8837506528315356
+        },
+        "pooled_auc_prediction_interval_95": {
+          "lower": 0.6966428622143193,
+          "upper": 0.9154480986209056
+        },
+        "pooled_logit_auc": 1.6067051050057728,
+        "pooled_logit_auc_se_hksj": 0.13251831508174045,
+        "tau2_logit_auc": 0.04179502563717973,
+        "i2_percent": 48.61249062561835,
+        "q_statistic": 5.837994556505199,
+        "degrees_of_freedom": 3
+      }
+    }
+  }
+}

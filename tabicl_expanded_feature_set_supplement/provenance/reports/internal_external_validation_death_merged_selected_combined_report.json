@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "data_path": "/Users/ac/comforter/MergedData.csv",
+    "model_set": [
+      "tabicl",
+      "autogluon",
+      "random_forest"
+    ],
+    "source_dirs": {
+      "tabicl_random_forest": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected",
+      "autogluon": "/Users/ac/comforter/artifacts/autogluon_death_internal_external_merged_selected"
+    }
+  },
+  "summary_auc": [
+    {
+      "model": "tabicl",
+      "pooled_auc": 0.8442872306740126,
+      "ci_95_lower": 0.7698033674255574,
+      "ci_95_upper": 0.8978681028776644,
+      "pi_95_lower": 0.6842575629278255,
+      "pi_95_upper": 0.9313460187037252,
+      "tau2_logit_auc": 0.0599788005566628,
+      "i2_percent": 56.92076694916772
+    },
+    {
+      "model": "autogluon",
+      "pooled_auc": 0.8379585461738738,
+      "ci_95_lower": 0.7586403775271068,
+      "ci_95_upper": 0.894824107827881,
+      "pi_95_lower": 0.6654345383863223,
+      "pi_95_upper": 0.9307730458034223,
+      "tau2_logit_auc": 0.0656712228436878,
+      "i2_percent": 60.41133337991177
+    },
+    {
+      "model": "random_forest",
+      "pooled_auc": 0.8329534309157827,
+      "ci_95_lower": 0.7658407270956645,
+      "ci_95_upper": 0.8837506528315356,
+      "pi_95_lower": 0.6966428622143193,
+      "pi_95_upper": 0.9154480986209056,
+      "tau2_logit_auc": 0.0417950256371797,
+      "i2_percent": 48.61249062561835
+    }
+  ]
+}

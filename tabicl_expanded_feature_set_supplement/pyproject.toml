@@ -1,0 +1,12 @@
+[project]
+name = "zenodo-tabicl-expanded-feature-set-supplement"
+version = "0.1.0"
+description = "Standalone synthetic demo for the TabICL expanded-feature-set Zenodo supplement"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "numpy==2.4.2",
+    "pandas==3.0.1",
+    "tabicl==2.0.2",
+    "torch==2.10.0",
+]

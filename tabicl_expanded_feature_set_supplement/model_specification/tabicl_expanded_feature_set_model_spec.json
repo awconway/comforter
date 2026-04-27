@@ -1,0 +1,169 @@
+{
+  "analysis_context": "TabICL model with expanded feature set evaluated using leave-one-site-out internal-external validation on MergedData.csv.",
+  "model_family": "TabICLClassifier",
+  "target_column": "DeathHospDisch",
+  "data_source": "/Users/ac/comforter/MergedData.csv",
+  "facility_column": "Facility",
+  "id_column": "Id",
+  "seed": 42,
+  "facility_levels": [
+    "Site_1",
+    "Site_2",
+    "Site_3",
+    "Site_4"
+  ],
+  "predictors": [
+    "Age",
+    "Sex",
+    "ARP",
+    "AdmitPrev24h",
+    "SurgPrev24h",
+    "ICUDischPrev24h",
+    "METWithinPrev24h",
+    "NEWS",
+    "ICD",
+    "SOFA",
+    "sofa_cns",
+    "sofa_cvs",
+    "sofa_coag",
+    "sofa_livr",
+    "sofa_renl",
+    "sofa_resp",
+    "news_loc",
+    "news_pulse",
+    "news_sbp",
+    "news_temp",
+    "news_resp",
+    "news_spo2",
+    "news_o2",
+    "ICD_nutrition",
+    "ICD_continence",
+    "ICD_hygiene",
+    "ICD_mobilisation",
+    "ICD_observation",
+    "ICD_medication",
+    "ICD_cognition",
+    "ICD_skin"
+  ],
+  "predictor_count": 31,
+  "preprocessing": [
+    "The expanded feature set consisted of the 31 direct variables already present in MergedData.csv, including total NEWS, SOFA, and mICD scores together with their component-level variables.",
+    "No manual spline expansion, one-hot encoding, or feature standardisation was applied in the archived TabICL expanded-feature workflow.",
+    "In the archived local code, the model_config field retained feature_set = raw_core. In this context, that label indicated that no additional derived instability-summary features were added beyond the supplied 31-column expanded feature set.",
+    "At each outer iteration of internal-external validation, TabICL was fit on the pooled non-held-out sites and then used to generate probabilities for the held-out site."
+  ],
+  "support_set_requirement": "This supplement now includes a serialized TabICL object fit on all available rows of MergedData.csv using the expanded 31-predictor feature set. The object may embed patient-level support information and should only be shared if governance approval permits.",
+  "model_config": {
+    "n_estimators": 8,
+    "norm_methods": null,
+    "feat_shuffle_method": "shift",
+    "class_shuffle_method": "shift",
+    "outlier_threshold": 4.0,
+    "softmax_temperature": 0.9,
+    "average_logits": true,
+    "support_many_classes": true,
+    "batch_size": 8,
+    "checkpoint_version": "tabicl-classifier-v2-20260212.ckpt",
+    "device": "cpu",
+    "feature_set": "raw_core"
+  },
+  "performance_summary": {
+    "site_specific_auc": [
+      {
+        "model": "tabicl",
+        "test_site": "Site_1",
+        "train_sites": "Site_2|Site_3|Site_4",
+        "auc": 0.8512550607287449,
+        "auc_variance": 0.0006563176643359343,
+        "auc_se": 0.025618697553465405,
+        "n_test": 485,
+        "n_pos": 95,
+        "n_neg": 390,
+        "prevalence": 0.1958762886597938
+      },
+      {
+        "model": "tabicl",
+        "test_site": "Site_2",
+        "train_sites": "Site_1|Site_3|Site_4",
+        "auc": 0.8234317862165963,
+        "auc_variance": 0.0007863847728225746,
+        "auc_se": 0.0280425528941745,
+        "n_test": 485,
+        "n_pos": 90,
+        "n_neg": 395,
+        "prevalence": 0.18556701030927836
+      },
+      {
+        "model": "tabicl",
+        "test_site": "Site_3",
+        "train_sites": "Site_1|Site_2|Site_4",
+        "auc": 0.8054636591478697,
+        "auc_variance": 0.0007344436726025518,
+        "auc_se": 0.027100621258608664,
+        "n_test": 485,
+        "n_pos": 105,
+        "n_neg": 380,
+        "prevalence": 0.21649484536082475
+      },
+      {
+        "model": "tabicl",
+        "test_site": "Site_4",
+        "train_sites": "Site_1|Site_2|Site_3",
+        "auc": 0.8931329423264908,
+        "auc_variance": 0.0004351361842617447,
+        "auc_se": 0.02085991812691854,
+        "n_test": 482,
+        "n_pos": 110,
+        "n_neg": 372,
+        "prevalence": 0.22821576763485477
+      }
+    ],
+    "pooled_random_effects_auc": {
+      "method": "random-effects meta-analysis",
+      "tau2_estimator": "Sidik-Jonkman",
+      "ci_method": "Hartung-Knapp-Sidik-Jonkman",
+      "prediction_interval_method": "Hartung-Knapp t-distribution",
+      "effect_scale": "logit_auc",
+      "within_site_variance": "Hanley-McNeil AUC variance with delta-method to logit(AUC)",
+      "k_sites": 4,
+      "pooled_auc": 0.8442872306740126,
+      "pooled_auc_ci_95": {
+        "lower": 0.7698033674255574,
+        "upper": 0.8978681028776644
+      },
+      "pooled_auc_prediction_interval_95": {
+        "lower": 0.6842575629278255,
+        "upper": 0.9313460187037252
+      },
+      "pooled_logit_auc": 1.6904796695568238,
+      "pooled_logit_auc_se_hksj": 0.151857525897153,
+      "tau2_logit_auc": 0.0599788005566628,
+      "i2_percent": 56.92076694916772,
+      "q_statistic": 6.9639122787076655,
+      "degrees_of_freedom": 3
+    },
+    "combined_summary_row": {
+      "model": "tabicl",
+      "pooled_auc": 0.8442872306740126,
+      "ci_95_lower": 0.7698033674255574,
+      "ci_95_upper": 0.8978681028776644,
+      "pi_95_lower": 0.6842575629278255,
+      "pi_95_upper": 0.9313460187037252,
+      "tau2_logit_auc": 0.0599788005566628,
+      "i2_percent": 56.92076694916772
+    }
+  },
+  "source_artifacts": [
+    "provenance/reports/internal_external_validation_death_merged_selected_report.json",
+    "provenance/reports/internal_external_validation_death_merged_selected_fold_auc.csv",
+    "provenance/reports/internal_external_validation_death_merged_selected_summary_auc.csv",
+    "provenance/reports/internal_external_validation_death_merged_selected_combined_report.json",
+    "provenance/reports/internal_external_validation_death_merged_selected_combined_summary_auc.csv"
+  ],
+  "serialized_fitted_object": {
+    "artifact_path": "fitted_model/tabicl_expanded_feature_set_all_data.pkl",
+    "metadata_path": "fitted_model/tabicl_expanded_feature_set_all_data_metadata.json",
+    "fit_scope": "All available rows in MergedData.csv with non-missing DeathHospDisch and the 31 expanded predictors.",
+    "evaluation_run": false
+  }
+}

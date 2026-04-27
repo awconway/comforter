@@ -1,0 +1,13 @@
+Id,Age,Sex,ARP,AdmitPrev24h,SurgPrev24h,ICUDischPrev24h,METWithinPrev24h,NEWS,ICD,SOFA,sofa_cns,sofa_cvs,sofa_coag,sofa_livr,sofa_renl,sofa_resp,news_loc,news_pulse,news_sbp,news_temp,news_resp,news_spo2,news_o2,ICD_nutrition,ICD_continence,ICD_hygiene,ICD_mobilisation,ICD_observation,ICD_medication,ICD_cognition,ICD_skin,DeathHospDisch
+900001,43,Female,Resuscitate,No,No,No,Nil,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0
+900002,58,Male,Resuscitate,Yes,No,No,Nil,2,12,1,0,0,0,0,0,1,0,1,0,0,1,0,0,1,2,2,2,2,1,1,1,0
+900003,66,Female,Resuscitate,No,Yes,No,One,3,15,2,1,0,0,0,0,1,0,1,1,0,1,0,0,2,2,2,2,2,2,2,1,0
+900004,71,Male,DNAR,Yes,No,No,One,5,17,4,1,1,0,0,1,1,0,1,1,1,1,1,0,2,2,3,2,2,2,2,2,0
+900005,79,Female,DNAR,Yes,No,Yes,TwoPlus,12,23,7,2,1,1,0,1,2,3,2,1,1,2,1,2,3,3,3,3,4,2,3,2,1
+900006,84,Male,DNAR,Yes,Yes,No,TwoPlus,15,27,11,3,1,1,1,2,3,3,2,2,1,3,2,2,3,3,4,4,4,3,3,3,1
+900007,88,Female,DNAR,Yes,No,Yes,TwoPlus,16,30,13,3,2,2,1,2,3,3,3,2,1,3,2,2,4,4,4,4,4,3,4,3,1
+900008,91,Male,DNAR,Yes,Yes,Yes,TwoPlus,18,32,15,4,2,2,1,2,4,3,3,3,1,3,3,2,4,4,4,4,4,4,4,4,1
+900009,62,Female,Resuscitate,No,No,No,Nil,3,14,2,0,0,0,0,1,1,0,1,0,1,1,0,0,2,2,2,2,2,1,2,1,0
+900010,74,Male,Resuscitate,Yes,No,No,One,5,19,3,1,0,0,0,1,1,0,1,1,0,2,1,0,2,3,2,3,3,2,2,2,0
+900011,82,Female,DNAR,Yes,No,Yes,TwoPlus,13,25,8,2,1,1,0,2,2,3,2,1,1,2,2,2,3,3,3,4,4,3,3,2,1
+900012,86,Male,DNAR,Yes,Yes,No,TwoPlus,15,29,11,3,1,1,1,2,3,3,2,2,1,3,2,2,4,4,3,4,4,3,4,3,1

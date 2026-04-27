@@ -1,0 +1,1 @@
+Id,Age,Sex,ARP,AdmitPrev24h,SurgPrev24h,ICUDischPrev24h,METWithinPrev24h,NEWS,ICD,SOFA,sofa_cns,sofa_cvs,sofa_coag,sofa_livr,sofa_renl,sofa_resp,news_loc,news_pulse,news_sbp,news_temp,news_resp,news_spo2,news_o2,ICD_nutrition,ICD_continence,ICD_hygiene,ICD_mobilisation,ICD_observation,ICD_medication,ICD_cognition,ICD_skin

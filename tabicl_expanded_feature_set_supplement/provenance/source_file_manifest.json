@@ -1,0 +1,42 @@
+[
+  {
+    "source_path": "/Users/ac/comforter/pyproject.toml",
+    "archived_path": "provenance/root_pyproject.toml"
+  },
+  {
+    "source_path": "/Users/ac/comforter/uv.lock",
+    "archived_path": "provenance/uv.lock"
+  },
+  {
+    "source_path": "/Users/ac/comforter/run_internal_external_validation_death.py",
+    "archived_path": "provenance/source_code/run_internal_external_validation_death.py"
+  },
+  {
+    "source_path": "/Users/ac/comforter/internal_external_validation_common.py",
+    "archived_path": "provenance/source_code/internal_external_validation_common.py"
+  },
+  {
+    "source_path": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected/report.json",
+    "archived_path": "provenance/reports/internal_external_validation_death_merged_selected_report.json"
+  },
+  {
+    "source_path": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected/fold_auc.csv",
+    "archived_path": "provenance/reports/internal_external_validation_death_merged_selected_fold_auc.csv"
+  },
+  {
+    "source_path": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected/summary_auc.csv",
+    "archived_path": "provenance/reports/internal_external_validation_death_merged_selected_summary_auc.csv"
+  },
+  {
+    "source_path": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected_combined/report.json",
+    "archived_path": "provenance/reports/internal_external_validation_death_merged_selected_combined_report.json"
+  },
+  {
+    "source_path": "/Users/ac/comforter/artifacts/internal_external_validation_death_merged_selected_combined/summary_auc.csv",
+    "archived_path": "provenance/reports/internal_external_validation_death_merged_selected_combined_summary_auc.csv"
+  },
+  {
+    "source_path": "/Users/ac/comforter/zenodo_tabicl_expanded_feature_set_supplement/provenance/source_code/build_tabicl_expanded_feature_set_all_data_object.py",
+    "archived_path": "provenance/source_code/build_tabicl_expanded_feature_set_all_data_object.py"
+  }
+]

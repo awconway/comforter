@@ -1,0 +1,32 @@
+predictor_name,analysis_context,source_dataset,variable_type,encoding_or_units,allowed_values_or_range,required_for_inference,notes
+Age,expanded_feature_set_iecv,MergedData.csv,continuous_integer,Years,Observed range 18 to 104,yes,Direct numeric input.
+Sex,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"Female, Male",yes,String encoding in MergedData.csv.
+ARP,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"Resuscitate, DNAR",yes,String encoding in MergedData.csv.
+AdmitPrev24h,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"No, Yes",yes,Recent hospital admission within the previous 24 hours.
+SurgPrev24h,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"No, Yes",yes,Recent surgery within the previous 24 hours.
+ICUDischPrev24h,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"No, Yes",yes,ICU discharge within the previous 24 hours.
+METWithinPrev24h,expanded_feature_set_iecv,MergedData.csv,categorical,String level,"Nil, One, TwoPlus",yes,Prior MET activations within the previous 24 hours.
+NEWS,expanded_feature_set_iecv,MergedData.csv,ordinal_score,Integer score,Observed range 0 to 19,yes,NEWS total score.
+ICD,expanded_feature_set_iecv,MergedData.csv,ordinal_score,Integer score,Observed range 9 to 29,yes,Modified Index of Caring Dependency total score.
+SOFA,expanded_feature_set_iecv,MergedData.csv,ordinal_score,Integer score,Observed range 0 to 13,yes,SOFA total score.
+sofa_cns,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA central nervous system component.
+sofa_cvs,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA cardiovascular component.
+sofa_coag,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA coagulation component.
+sofa_livr,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA liver component.
+sofa_renl,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA renal component.
+sofa_resp,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 4,yes,SOFA respiratory component.
+news_loc,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed values 0 and 3,yes,NEWS level-of-consciousness component.
+news_pulse,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 3,yes,NEWS pulse component.
+news_sbp,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 3,yes,NEWS systolic blood pressure component.
+news_temp,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 3,yes,NEWS temperature component.
+news_resp,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 3,yes,NEWS respiratory rate component.
+news_spo2,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 0 to 3,yes,NEWS oxygen saturation component.
+news_o2,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed values 0 and 2,yes,NEWS supplemental oxygen component.
+ICD_nutrition,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD nutrition component.
+ICD_continence,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD continence component.
+ICD_hygiene,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD hygiene component.
+ICD_mobilisation,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD mobilisation component.
+ICD_observation,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD observation component.
+ICD_medication,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD medication component.
+ICD_cognition,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD cognition component.
+ICD_skin,expanded_feature_set_iecv,MergedData.csv,ordinal_component,Integer component score,Observed range 1 to 4,yes,mICD skin component.
